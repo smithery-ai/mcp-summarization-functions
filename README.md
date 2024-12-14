@@ -7,7 +7,8 @@
 [Features](#features) •
 [Installation](#installation) •
 [Usage](#usage) •
-[Architecture](#architecture)
+[Architecture](#architecture) •
+[Roadmap](#roadmap)
 
 </div>
 
@@ -57,6 +58,46 @@ src/
 ├── services    # Core business logic
 ├── server      # MCP server handling
 └── types       # Shared type definitions
+```
+
+## Roadmap
+
+### Upcoming Enhancements
+
+- **Context-Aware Processing**
+  - Hint-based summarization focus (e.g., security, API surface, dependencies)
+  - Format-specific processing
+  - Relationship preservation
+
+- **Flexible Output Formats**
+  - JSON structured output
+  - Markdown with sections
+  - Hierarchical outline
+
+- **Enhanced Analysis**
+  - Security pattern detection
+  - API surface documentation
+  - Dependency tracking
+  - Error handling analysis
+
+See the [enhancement specification](docs/spec/enhanced-summarization.md) and [implementation roadmap](docs/spec/implementation-roadmap.md) for detailed information.
+
+### Example Future Usage
+
+```typescript
+// Security analysis in JSON format
+const securityAnalysis = await summarize_files({
+  paths: ["src/auth.ts"],
+  hint: "security_analysis",
+  output_format: "json"
+});
+
+// API surface documentation in markdown
+const apiDocs = await summarize_files({
+  paths: ["src/api/"],
+  hint: "api_surface",
+  output_format: "markdown"
+});
 ```
 
 ## License
