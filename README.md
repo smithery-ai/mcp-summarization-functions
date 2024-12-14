@@ -2,7 +2,7 @@
 
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)](https://www.typescriptlang.org/)
-[![Claude Integration](https://img.shields.io/badge/Claude-3.0-purple)](https://anthropic.com)
+[![Claude Integration](https://img.shields.io/badge/Claude-3.5-purple)](https://anthropic.com)
 [![MCP Protocol](https://img.shields.io/badge/MCP-0.6.0-orange)](https://modelcontextprotocol.ai)
 
 > 🚀 Supercharge your AI agents with intelligent summarization capabilities
