@@ -4,8 +4,8 @@ import nodeFetch from 'node-fetch';
 config();
 
 // Mock fetch with proper types
-const mockFetch = jest.fn<typeof fetch>();
-global.fetch = mockFetch as unknown as typeof fetch;
+const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
+global.fetch = mockFetch;
 
 // Mock successful response
 const mockSuccessResponse = {

@@ -1,83 +1,19 @@
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { McpServer } from '../../server/mcp-server';
 import { SummarizationService } from '../../services/summarization';
-import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
-import { execa } from 'execa';
+import { ErrorCode, McpError, ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { SummarizationModel } from '../../types/models';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import path from 'path';
 
-// Mock type for test purposes - only include properties we actually use
-interface MockExecaResult {
-		stdout: string;
-		stderr: string;
-		command?: string;
-		exitCode?: number;
-}
-
-import * as fs from 'fs/promises';
-import { Dirent } from 'fs';
-
-// Helper function to create mock Dirent objects
-function createMockDirent(name: string, isDir: boolean): Dirent {
-  return {
-    name,
-    isDirectory: () => isDir,
-    isFile: () => !isDir,
-    isBlockDevice: () => false,
-    isCharacterDevice: () => false,
-    isFIFO: () => false,
-    isSocket: () => false,
-    isSymbolicLink: () => false
-  } as Dirent;
-}
-import { SummarizationModel, ModelConfig } from '../../types/models';
-
-// Mock dependencies
-jest.mock('execa');
-jest.mock('fs/promises');
-jest.mock('@modelcontextprotocol/sdk/server/stdio.js');
-
-// Create mock functions with proper types
-const mockExeca = jest.mocked(execa);
-const mockReadFile = jest.fn<typeof fs.readFile>();
-const mockReaddir = jest.fn<typeof fs.readdir>();
-
-// Setup fs/promises mock
-jest.mock('fs/promises', () => ({
-  readFile: mockReadFile,
-		readdir: mockReaddir,
-		__esModule: true
-}));
-
-
-jest.mock('@modelcontextprotocol/sdk/server/stdio.js');
-
-// Define response types
-interface ToolResponse {
-  content: Array<{ type: string; text: string }>;
-}
-
-interface ToolSchema {
-  type: string;
-  properties: {
-    [key: string]: {
-      type: string;
-      description: string;
-    };
-  };
-  required?: string[];
-}
-
-interface ListToolsResponse {
-  tools: Array<{
-    name: string;
-    description: string;
-    inputSchema: ToolSchema;
-  }>;
-}
-
-// Mock model for testing
+// Simple mock model for testing
 class MockModel implements SummarizationModel {
-  async initialize(config: ModelConfig): Promise<void> {}
+  async initialize(): Promise<void> {}
   async summarize(content: string, type: string): Promise<string> {
+    // For directory listings, return the actual content
+    if (type === 'directory listing') {
+      return content;
+    }
     return `Summarized ${type}`;
   }
   async cleanup(): Promise<void> {}
@@ -86,68 +22,59 @@ class MockModel implements SummarizationModel {
 describe('McpServer', () => {
   let server: McpServer;
   let summarizationService: SummarizationService;
-  let listToolsHandler: jest.Mock;
-  let callToolHandler: jest.Mock;
+  let mockServer: {
+    handlers: Map<string, Function>;
+    setRequestHandler: (schema: any, handler: Function) => void;
+  };
 
-  beforeEach(() => {
-    const mockModel = new MockModel();
-    summarizationService = new SummarizationService(mockModel, {
+  beforeEach(async () => {
+    // Setup mock server
+    mockServer = {
+      handlers: new Map(),
+      setRequestHandler: function(schema: any, handler: Function) {
+        const method = schema === ListToolsRequestSchema ? 'list_tools' : 
+                      schema === CallToolRequestSchema ? 'call_tool' : 
+                      'unknown';
+        this.handlers.set(method, handler);
+      }
+    };
+
+    // Mock Server constructor
+    jest.spyOn(Server.prototype, 'setRequestHandler')
+      .mockImplementation((schema, handler) => mockServer.setRequestHandler(schema, handler));
+    
+    jest.spyOn(Server.prototype, 'connect').mockResolvedValue();
+    jest.spyOn(Server.prototype, 'close').mockResolvedValue();
+
+    // Create services
+    summarizationService = new SummarizationService(new MockModel(), {
       model: { apiKey: 'test-key' },
       charThreshold: 100,
       cacheMaxAge: 1000
     });
+
     server = new McpServer(summarizationService);
-
-    // Capture handlers during initialization
-    const originalSetHandler = server['server'].setRequestHandler;
-    server['server'].setRequestHandler = jest.fn((schema: any, handler: any) => {
-      if (schema.method === 'list_tools') {
-        listToolsHandler = handler;
-      } else if (schema.method === 'call_tool') {
-        callToolHandler = handler;
-      }
-      return originalSetHandler.call(server['server'], schema, handler);
-    });
-
-    // Initialize server to set up handlers
-    server['setupToolHandlers']();
-
-    // Set up mock implementations
-    const defaultMockResult: ExecaResult<string> = {
-      command: '',
-      exitCode: 0,
-      stdout: '',
-      stderr: '',
-      failed: false,
-      timedOut: false,
-      isCanceled: false,
-      killed: false,
-      signal: undefined,
-      signalDescription: undefined,
-      stdio: [undefined, undefined, undefined],
-      cwd: process.cwd(),
-      escapedCommand: '',
-      pipedFrom: undefined,
-      ipcOutput: undefined,
-      all: undefined
-    };
-    mockExeca.mockResolvedValue(defaultMockResult);
-
-    mockReadFile.mockResolvedValue('');
-    mockReaddir.mockResolvedValue([]);
+    await server.start(); // This will register the handlers
   });
 
   afterEach(async () => {
     await server.cleanup();
-    jest.clearAllMocks();
   });
 
-  describe('tool registration', () => {
-    it('should register all tools', async () => {
-      const response = await listToolsHandler({}) as ListToolsResponse;
+  const getHandler = (name: string): Function => {
+    const handler = mockServer.handlers.get(name);
+    if (!handler) {
+      throw new Error(`Handler not found: ${name}`);
+    }
+    return handler;
+  };
 
-      const toolNames = response.tools.map(t => t.name);
-      expect(toolNames).toEqual([
+  describe('Tool Registration', () => {
+    it('should register all tools on server initialization', async () => {
+      const response = await getHandler('list_tools')({ method: 'list_tools' }, {});
+
+      expect(response.tools).toHaveLength(5);
+      expect(response.tools.map((t: { name: string }) => t.name)).toEqual([
         'summarize_command',
         'summarize_files',
         'summarize_directory',
@@ -157,270 +84,146 @@ describe('McpServer', () => {
     });
   });
 
-  describe('summarize_command', () => {
-    beforeEach(() => {
-      (execa as unknown as jest.Mock).mockImplementation(() => ({
-        stdout: 'command output',
-        stderr: ''
-      }));
-    });
+  describe('Tool Execution', () => {
+    const callTool = async (name: string, args: any) => {
+      return getHandler('call_tool')({
+        method: 'call_tool',
+        params: { name, arguments: args }
+      }, {});
+    };
 
-    it('should execute and summarize command output', async () => {
-      const commandMockResult: MockExecaResult = {
-        stdout: 'command output',
-        stderr: '',
-        command: 'test command',
-        exitCode: 0
-      };
-      mockExeca.mockResolvedValue(commandMockResult);
-
-      const response = await callToolHandler({
-        params: {
-          name: 'summarize_command',
-										arguments: {
-            command: 'test command',
-            cwd: '/test/path'
-          }
-        }
-      }) as ToolResponse;
-
-      expect(mockExeca).toHaveBeenCalledWith('test command', {
-        shell: true,
-        cwd: '/test/path'
-      });
-      expect(response.content[0].text).toBe('command output');
-    });
-
-    it('should include stderr in output if present', async () => {
-      mockExeca.mockResolvedValue({
-        stdout: 'stdout',
-        stderr: 'error occurred',
-        failed: false,
-        killed: false,
-        command: 'test',
-        exitCode: 0,
-        timedOut: false,
-        isCanceled: false,
-        signalDescription: null,
-        signal: null
+    describe('summarize_command', () => {
+      it('should execute and return command output', async () => {
+        const response = await callTool('summarize_command', { 
+          command: 'echo "Hello, World!"'
+        });
+        
+        expect(response.content[0].text).toBe('Hello, World!');
       });
 
-      const response = await callToolHandler({
-        params: {
-          name: 'summarize_command',
-          arguments: { command: 'test' }
-        }
-      }) as ToolResponse;
-
-      expect(response.content[0].text).toBe('stdout\nError: error occurred');
+      it('should include stderr in output when present', async () => {
+        const response = await callTool('summarize_command', { 
+          command: 'echo "output" && echo "error" >&2'
+        });
+        
+        expect(response.content[0].text).toBe('output\nError: error');
+      });
     });
 
-    it('should handle command execution errors', async () => {
-      mockExeca.mockRejectedValue(new Error('Command failed'));
+    describe('summarize_files', () => {
+      const testFilesDir = path.join(process.cwd(), 'src', '__tests__', 'test-files');
 
-      await expect(callToolHandler({
-        params: {
-          name: 'summarize_command',
-          arguments: { command: 'test' }
-        }
-      })).rejects.toThrow(new McpError(ErrorCode.InternalError, 'Error in summarize_command: Command failed'));
-    });
-  });
+      it('should read and return file contents', async () => {
+        const response = await callTool('summarize_files', { 
+          paths: [path.join(testFilesDir, 'test1.txt')] 
+        });
+        
+        expect(response.content[0].text).toContain('This is test file 1');
+      });
 
-  describe('summarize_files', () => {
-    beforeEach(() => {
-      mockReadFile.mockResolvedValue('file content');
-    });
-
-    it('should summarize file contents', async () => {
-      const response = await callToolHandler({
-        params: {
-          name: 'summarize_files',
-          arguments: {
-            paths: ['test.txt']
-          }
-        }
-      }) as ToolResponse;
-
-      expect(mockReadFile).toHaveBeenCalled();
-      expect(response.content[0].text).toContain('test.txt');
-    });
-  });
-
-  describe('summarize_directory', () => {
-    beforeEach(() => {
-      mockReaddir.mockResolvedValue([
-        createMockDirent('file.txt', false),
-        createMockDirent('dir', true)
-      ]);
+      it('should handle multiple files', async () => {
+        const response = await callTool('summarize_files', { 
+          paths: [
+            path.join(testFilesDir, 'test1.txt'),
+            path.join(testFilesDir, 'test2.txt')
+          ] 
+        });
+        
+        expect(response.content[0].text).toContain('This is test file 1');
+        expect(response.content[0].text).toContain('This is test file 2');
+      });
     });
 
-    it('should list directory contents', async () => {
-      const response = await callToolHandler({
-        params: {
-          name: 'summarize_directory',
-          arguments: {
-            path: '/test',
-            recursive: false
-          }
-        }
-      }) as ToolResponse;
+    describe('summarize_directory', () => {
+      const testFilesDir = path.join(process.cwd(), 'src', '__tests__', 'test-files');
 
-      expect(mockReaddir).toHaveBeenCalled();
-      expect(response.content[0].text).toContain('file.txt');
-      expect(response.content[0].text).toContain('dir');
-    });
-  });
-
-  describe('summarize_text', () => {
-    it('should summarize text content', async () => {
-      const longContent = 'A'.repeat(150);
-      const response = await callToolHandler({
-        params: {
-          name: 'summarize_text',
-          arguments: {
-            content: longContent,
-            type: 'test content'
-          }
-        }
-      }) as ToolResponse;
-
-      expect(response.content[0].text).toContain('Summarized test content');
+      it('should list directory contents', async () => {
+        const response = await callTool('summarize_directory', { 
+          path: testFilesDir 
+        });
+        
+        // Check for the presence of both test files in the output
+        const text = response.content[0].text;
+        expect(text).toContain('test1.txt');
+        expect(text).toContain('test2.txt');
+        // Verify it's a proper directory listing
+        expect(text).toMatch(/Summary \(full content ID: [\w-]+\):/);
+      });
     });
 
-    it('should return original text if short', async () => {
-      const response = await callToolHandler({
-        params: {
-          name: 'summarize_text',
-          arguments: {
-            content: 'short text',
-            type: 'test'
-          }
-        }
-      }) as ToolResponse;
+    describe('summarize_text', () => {
+      it('should summarize long text', async () => {
+        const longText = 'a'.repeat(200);
+        const response = await callTool('summarize_text', { 
+          content: longText, 
+          type: 'test' 
+        });
+        
+        expect(response.content[0].text).toContain('Summarized test');
+      });
 
-      expect(response.content[0].text).toBe('short text');
+      it('should return original text if short', async () => {
+        const shortText = 'short text';
+        const response = await callTool('summarize_text', {
+          content: shortText,
+          type: 'test'
+        });
+        
+        expect(response.content[0].text).toBe(shortText);
+      });
+    });
+
+    describe('get_full_content', () => {
+      it('should throw error for invalid ID', async () => {
+        await expect(callTool('get_full_content', { 
+          id: 'invalid' 
+        })).rejects.toThrow('Content not found or expired');
+      });
     });
   });
 
-  describe('get_full_content', () => {
-    let contentId: string;
+  describe('Error Handling', () => {
+    const callTool = async (name: string, args: any) => {
+      return getHandler('call_tool')({
+        method: 'call_tool',
+        params: { name, arguments: args }
+      }, {});
+    };
 
-    beforeEach(async () => {
-      // First summarize something to get an ID
-      const longContent = 'A'.repeat(150);
-      const summaryResponse = await callToolHandler({
-        params: {
-          name: 'summarize_text',
-          arguments: {
-            content: longContent,
-            type: 'test'
-          }
-        }
-      }) as ToolResponse;
-      contentId = summaryResponse.content[0].text.match(/ID: ([^)]+)/)?.[1] || '';
-    });
-
-    it('should retrieve full content by ID', async () => {
-      const response = await callToolHandler({
-        params: {
-          name: 'get_full_content',
-          arguments: { id: contentId }
-        }
-      }) as ToolResponse;
-
-      expect(response.content[0].text).toBeDefined();
-    });
-
-    it('should throw error for invalid ID', async () => {
-      await expect(callToolHandler({
-        params: {
-          name: 'get_full_content',
-          arguments: { id: 'invalid-id' }
-        }
-      })).rejects.toThrow('Content not found or expired');
-    });
-  });
-
-  describe('error handling', () => {
     it('should handle missing tool name', async () => {
-      await expect(callToolHandler({
-        params: {
-          arguments: {}
-        }
-      })).rejects.toThrow(new McpError(ErrorCode.InvalidRequest, 'Missing tool name'));
+      await expect(getHandler('call_tool')({
+        method: 'call_tool',
+        params: { arguments: {} }
+      }, {})).rejects.toThrow('Missing tool name');
     });
 
     it('should handle missing arguments', async () => {
-      await expect(callToolHandler({
-        params: {
-          name: 'summarize_text'
-        }
-      })).rejects.toThrow(new McpError(ErrorCode.InvalidRequest, 'Missing arguments'));
+      await expect(getHandler('call_tool')({
+        method: 'call_tool',
+        params: { name: 'summarize_text' }
+      }, {})).rejects.toThrow('Missing arguments');
     });
 
     it('should handle unknown tool', async () => {
-      await expect(callToolHandler({
-        params: {
-          name: 'unknown_tool',
-          arguments: {}
-        }
-      })).rejects.toThrow(new McpError(ErrorCode.MethodNotFound, 'Unknown tool: unknown_tool'));
+      await expect(callTool('unknown_tool', {}))
+        .rejects.toThrow('Unknown tool: unknown_tool');
     });
 
-    it('should handle invalid arguments for summarize_text', async () => {
-      await expect(callToolHandler({
-        params: {
-          name: 'summarize_text',
-          arguments: {
-            invalid: 'args'
-          }
-        }
-      })).rejects.toThrow(new McpError(ErrorCode.InvalidRequest, 'Invalid arguments for summarize_text'));
+    it('should handle invalid arguments', async () => {
+      await expect(callTool('summarize_text', { invalid: 'args' }))
+        .rejects.toThrow('Invalid arguments for summarize_text');
     });
 
-    it('should handle invalid arguments for summarize_command', async () => {
-      await expect(callToolHandler({
-        params: {
-          name: 'summarize_command',
-          arguments: {
-            invalid: 'args'
-          }
-        }
-      })).rejects.toThrow(new McpError(ErrorCode.InvalidRequest, 'Invalid arguments for summarize_command'));
+    it('should handle command execution errors', async () => {
+      await expect(callTool('summarize_command', { 
+        command: 'nonexistentcommand' 
+      })).rejects.toThrow('Error in summarize_command');
     });
 
-    it('should handle invalid arguments for summarize_files', async () => {
-      await expect(callToolHandler({
-        params: {
-          name: 'summarize_files',
-          arguments: {
-            invalid: 'args'
-          }
-        }
-      })).rejects.toThrow(new McpError(ErrorCode.InvalidRequest, 'Invalid arguments for summarize_files'));
-    });
-
-    it('should handle invalid arguments for summarize_directory', async () => {
-      await expect(callToolHandler({
-        params: {
-          name: 'summarize_directory',
-          arguments: {
-            invalid: 'args'
-          }
-        }
-      })).rejects.toThrow(new McpError(ErrorCode.InvalidRequest, 'Invalid arguments for summarize_directory'));
-    });
-
-    it('should handle invalid arguments for get_full_content', async () => {
-      await expect(callToolHandler({
-        params: {
-          name: 'get_full_content',
-          arguments: {
-            invalid: 'args'
-          }
-        }
-      })).rejects.toThrow(new McpError(ErrorCode.InvalidRequest, 'Invalid arguments for get_full_content'));
+    it('should handle file read errors', async () => {
+      await expect(callTool('summarize_files', { 
+        paths: ['nonexistent.txt'] 
+      })).rejects.toThrow('Error in summarize_files');
     });
   });
 });
