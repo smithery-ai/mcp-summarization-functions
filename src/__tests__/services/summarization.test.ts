@@ -59,7 +59,9 @@ describe('SummarizationService', () => {
       const failingService = new SummarizationService(failingModel, {
         model: { apiKey: 'test-key' }
       });
+
       await expect(failingService.initialize()).rejects.toThrow('Mock initialization failed');
+      await failingService.cleanup();
     });
   });
 
@@ -86,16 +88,25 @@ describe('SummarizationService', () => {
     });
 
     it('should handle summarization failure', async () => {
-      const failingModel = new MockModel(true);
-      const failingService = new SummarizationService(failingModel, {
+      const failModel = new MockModel();
+      const failService = new SummarizationService(failModel, {
         model: { apiKey: 'test-key' },
         charThreshold: 100
       });
-      await failingService.initialize();
 
-      const content = 'A'.repeat(150);
-      await expect(failingService.maybeSummarize(content, 'text'))
-        .rejects.toThrow('Mock summarization failed');
+      await failService.initialize();
+      
+      const mockSummarize = jest.spyOn(failModel, 'summarize')
+        .mockRejectedValueOnce(new Error('Mock summarization failed'));
+
+      try {
+        const content = 'A'.repeat(150);
+        await expect(failService.maybeSummarize(content, 'text'))
+          .rejects.toThrow('Mock summarization failed');
+      } finally {
+        mockSummarize.mockRestore();
+        await failService.cleanup();
+      }
     });
   });
 
@@ -103,16 +114,17 @@ describe('SummarizationService', () => {
     beforeEach(async () => {
       jest.useFakeTimers();
       await service.initialize();
-				});
+    });
 
-    afterEach(() => {
+    afterEach(async () => {
+      jest.runOnlyPendingTimers();
       jest.useRealTimers();
     });
 
     it('should store and retrieve content', async () => {
       const content = 'A'.repeat(150);
       const result = await service.maybeSummarize(content, 'text');
-						expect(result.id).toBeDefined();
+      expect(result.id).toBeDefined();
 
       const retrieved = service.getFullContent(result.id!);
       expect(retrieved).toBe(content);
@@ -127,27 +139,27 @@ describe('SummarizationService', () => {
       const content = 'A'.repeat(150);
       const result = await service.maybeSummarize(content, 'text');
       
+      // Use runAllTimers to handle any pending promises
+      await jest.runAllTimersAsync();
+      
       // Advance time past cache expiration
       jest.advanceTimersByTime(1100);
+      await jest.runAllTimersAsync();
       
       const retrieved = service.getFullContent(result.id!);
       expect(retrieved).toBeNull();
     });
 
-    it('should validate cache age configuration', () => {
-      expect(() => {
-        new SummarizationService(model, {
-          model: { apiKey: 'test-key' },
-          cacheMaxAge: -1
-        });
-      }).toThrow('Cache max age must be a positive number');
+    it('should throw error for invalid cache age configuration', async () => {
+      await expect(() => new SummarizationService(model, {
+        model: { apiKey: 'test-key' },
+        cacheMaxAge: -1
+      })).toThrow('Cache max age must be a positive number');
 
-      expect(() => {
-        new SummarizationService(model, {
-          model: { apiKey: 'test-key' },
-          cacheMaxAge: 0
-        });
-      }).toThrow('Cache max age must be a positive number');
+      await expect(() => new SummarizationService(model, {
+        model: { apiKey: 'test-key' },
+        cacheMaxAge: 0
+      })).toThrow('Cache max age must be a positive number');
     });
   });
 
@@ -155,12 +167,12 @@ describe('SummarizationService', () => {
     it('should clean up resources', async () => {
       await service.initialize();
       const content = 'A'.repeat(150);
-      await service.maybeSummarize(content, 'text');
+      const result = await service.maybeSummarize(content, 'text');
       
       await service.cleanup();
       
       // Cache should be cleared
-      const retrieved = service.getFullContent('any-id');
+      const retrieved = service.getFullContent(result.id!);
       expect(retrieved).toBeNull();
     });
   });

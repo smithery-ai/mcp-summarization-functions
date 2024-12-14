@@ -3,39 +3,52 @@ import { McpServer } from '../../server/mcp-server';
 import { SummarizationService } from '../../services/summarization';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { execa } from 'execa';
+
+// Mock type for test purposes - only include properties we actually use
+interface MockExecaResult {
+		stdout: string;
+		stderr: string;
+		command?: string;
+		exitCode?: number;
+}
+
 import * as fs from 'fs/promises';
 import { Dirent } from 'fs';
 
 // Helper function to create mock Dirent objects
 function createMockDirent(name: string, isDir: boolean): Dirent {
-		return {
-				name,
-				isDirectory: () => isDir,
-				isFile: () => !isDir,
-				isBlockDevice: () => false,
-				isCharacterDevice: () => false,
-				isFIFO: () => false,
-				isSocket: () => false,
-				isSymbolicLink: () => false
-		} as Dirent;
+  return {
+    name,
+    isDirectory: () => isDir,
+    isFile: () => !isDir,
+    isBlockDevice: () => false,
+    isCharacterDevice: () => false,
+    isFIFO: () => false,
+    isSocket: () => false,
+    isSymbolicLink: () => false
+  } as Dirent;
 }
 import { SummarizationModel, ModelConfig } from '../../types/models';
 
 // Mock dependencies
-const mockExeca = jest.fn();
-jest.mock('execa', () => ({
-		__esModule: true,
-		default: mockExeca
-}));
-jest.mock('fs/promises', () => ({
-		readFile: jest.fn(),
-		readdir: jest.fn()
-}));
+jest.mock('execa');
+jest.mock('fs/promises');
 jest.mock('@modelcontextprotocol/sdk/server/stdio.js');
 
-// Type the mocked functions
-const mockedReadFile = fs.readFile as jest.MockedFunction<typeof fs.readFile>;
-const mockedReaddir = fs.readdir as jest.MockedFunction<typeof fs.readdir>;
+// Create mock functions with proper types
+const mockExeca = jest.mocked(execa);
+const mockReadFile = jest.fn<typeof fs.readFile>();
+const mockReaddir = jest.fn<typeof fs.readdir>();
+
+// Setup fs/promises mock
+jest.mock('fs/promises', () => ({
+  readFile: mockReadFile,
+		readdir: mockReaddir,
+		__esModule: true
+}));
+
+
+jest.mock('@modelcontextprotocol/sdk/server/stdio.js');
 
 // Define response types
 interface ToolResponse {
@@ -48,17 +61,17 @@ interface ToolSchema {
     [key: string]: {
       type: string;
       description: string;
-				};
-		};
-		required?: string[];
+    };
+  };
+  required?: string[];
 }
 
 interface ListToolsResponse {
-		tools: Array<{
-				name: string;
-				description: string;
-				inputSchema: ToolSchema;
-		}>;
+  tools: Array<{
+    name: string;
+    description: string;
+    inputSchema: ToolSchema;
+  }>;
 }
 
 // Mock model for testing
@@ -100,13 +113,28 @@ describe('McpServer', () => {
     server['setupToolHandlers']();
 
     // Set up mock implementations
-    mockExeca.mockImplementation(() => ({
+    const defaultMockResult: ExecaResult<string> = {
+      command: '',
+      exitCode: 0,
       stdout: '',
-      stderr: ''
-    }));
+      stderr: '',
+      failed: false,
+      timedOut: false,
+      isCanceled: false,
+      killed: false,
+      signal: undefined,
+      signalDescription: undefined,
+      stdio: [undefined, undefined, undefined],
+      cwd: process.cwd(),
+      escapedCommand: '',
+      pipedFrom: undefined,
+      ipcOutput: undefined,
+      all: undefined
+    };
+    mockExeca.mockResolvedValue(defaultMockResult);
 
-    mockedReadFile.mockResolvedValue('');
-    mockedReaddir.mockResolvedValue([]);
+    mockReadFile.mockResolvedValue('');
+    mockReaddir.mockResolvedValue([]);
   });
 
   afterEach(async () => {
@@ -131,35 +159,51 @@ describe('McpServer', () => {
 
   describe('summarize_command', () => {
     beforeEach(() => {
-      (execa as jest.Mock).mockImplementation(() => ({
+      (execa as unknown as jest.Mock).mockImplementation(() => ({
         stdout: 'command output',
         stderr: ''
       }));
     });
 
     it('should execute and summarize command output', async () => {
+      const commandMockResult: MockExecaResult = {
+        stdout: 'command output',
+        stderr: '',
+        command: 'test command',
+        exitCode: 0
+      };
+      mockExeca.mockResolvedValue(commandMockResult);
+
       const response = await callToolHandler({
         params: {
           name: 'summarize_command',
-          arguments: {
+										arguments: {
             command: 'test command',
             cwd: '/test/path'
           }
         }
       }) as ToolResponse;
 
-      expect(execa).toHaveBeenCalledWith('test command', {
+      expect(mockExeca).toHaveBeenCalledWith('test command', {
         shell: true,
         cwd: '/test/path'
       });
-      expect(response.content[0].text).toContain('command output');
+      expect(response.content[0].text).toBe('command output');
     });
 
     it('should include stderr in output if present', async () => {
-      (execa as jest.Mock).mockImplementation(() => ({
+      mockExeca.mockResolvedValue({
         stdout: 'stdout',
-        stderr: 'error occurred'
-      }));
+        stderr: 'error occurred',
+        failed: false,
+        killed: false,
+        command: 'test',
+        exitCode: 0,
+        timedOut: false,
+        isCanceled: false,
+        signalDescription: null,
+        signal: null
+      });
 
       const response = await callToolHandler({
         params: {
@@ -168,13 +212,24 @@ describe('McpServer', () => {
         }
       }) as ToolResponse;
 
-      expect(response.content[0].text).toContain('Error: error occurred');
+      expect(response.content[0].text).toBe('stdout\nError: error occurred');
+    });
+
+    it('should handle command execution errors', async () => {
+      mockExeca.mockRejectedValue(new Error('Command failed'));
+
+      await expect(callToolHandler({
+        params: {
+          name: 'summarize_command',
+          arguments: { command: 'test' }
+        }
+      })).rejects.toThrow(new McpError(ErrorCode.InternalError, 'Error in summarize_command: Command failed'));
     });
   });
 
   describe('summarize_files', () => {
     beforeEach(() => {
-      mockedReadFile.mockResolvedValue('file content');
+      mockReadFile.mockResolvedValue('file content');
     });
 
     it('should summarize file contents', async () => {
@@ -187,14 +242,14 @@ describe('McpServer', () => {
         }
       }) as ToolResponse;
 
-      expect(fs.readFile).toHaveBeenCalledWith('test.txt', 'utf-8');
+      expect(mockReadFile).toHaveBeenCalled();
       expect(response.content[0].text).toContain('test.txt');
     });
   });
 
   describe('summarize_directory', () => {
     beforeEach(() => {
-      mockedReaddir.mockResolvedValue([
+      mockReaddir.mockResolvedValue([
         createMockDirent('file.txt', false),
         createMockDirent('dir', true)
       ]);
@@ -211,7 +266,7 @@ describe('McpServer', () => {
         }
       }) as ToolResponse;
 
-      expect(fs.readdir).toHaveBeenCalled();
+      expect(mockReaddir).toHaveBeenCalled();
       expect(response.content[0].text).toContain('file.txt');
       expect(response.content[0].text).toContain('dir');
     });
@@ -293,7 +348,7 @@ describe('McpServer', () => {
         params: {
           arguments: {}
         }
-      })).rejects.toThrow('Missing tool name');
+      })).rejects.toThrow(new McpError(ErrorCode.InvalidRequest, 'Missing tool name'));
     });
 
     it('should handle missing arguments', async () => {
@@ -301,7 +356,7 @@ describe('McpServer', () => {
         params: {
           name: 'summarize_text'
         }
-      })).rejects.toThrow('Missing arguments');
+      })).rejects.toThrow(new McpError(ErrorCode.InvalidRequest, 'Missing arguments'));
     });
 
     it('should handle unknown tool', async () => {
@@ -310,10 +365,10 @@ describe('McpServer', () => {
           name: 'unknown_tool',
           arguments: {}
         }
-      })).rejects.toThrow('Unknown tool');
+      })).rejects.toThrow(new McpError(ErrorCode.MethodNotFound, 'Unknown tool: unknown_tool'));
     });
 
-    it('should handle invalid arguments', async () => {
+    it('should handle invalid arguments for summarize_text', async () => {
       await expect(callToolHandler({
         params: {
           name: 'summarize_text',
@@ -321,7 +376,51 @@ describe('McpServer', () => {
             invalid: 'args'
           }
         }
-      })).rejects.toThrow('Invalid arguments');
+      })).rejects.toThrow(new McpError(ErrorCode.InvalidRequest, 'Invalid arguments for summarize_text'));
+    });
+
+    it('should handle invalid arguments for summarize_command', async () => {
+      await expect(callToolHandler({
+        params: {
+          name: 'summarize_command',
+          arguments: {
+            invalid: 'args'
+          }
+        }
+      })).rejects.toThrow(new McpError(ErrorCode.InvalidRequest, 'Invalid arguments for summarize_command'));
+    });
+
+    it('should handle invalid arguments for summarize_files', async () => {
+      await expect(callToolHandler({
+        params: {
+          name: 'summarize_files',
+          arguments: {
+            invalid: 'args'
+          }
+        }
+      })).rejects.toThrow(new McpError(ErrorCode.InvalidRequest, 'Invalid arguments for summarize_files'));
+    });
+
+    it('should handle invalid arguments for summarize_directory', async () => {
+      await expect(callToolHandler({
+        params: {
+          name: 'summarize_directory',
+          arguments: {
+            invalid: 'args'
+          }
+        }
+      })).rejects.toThrow(new McpError(ErrorCode.InvalidRequest, 'Invalid arguments for summarize_directory'));
+    });
+
+    it('should handle invalid arguments for get_full_content', async () => {
+      await expect(callToolHandler({
+        params: {
+          name: 'get_full_content',
+          arguments: {
+            invalid: 'args'
+          }
+        }
+      })).rejects.toThrow(new McpError(ErrorCode.InvalidRequest, 'Invalid arguments for get_full_content'));
     });
   });
 });

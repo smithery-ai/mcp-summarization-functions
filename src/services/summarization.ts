@@ -23,7 +23,7 @@ export class SummarizationService {
     this.contentCache = new Map();
     this.charThreshold = config.charThreshold || 512;
     
-				// Validate cache max age
+    // Validate cache max age
     if (config.cacheMaxAge !== undefined && config.cacheMaxAge <= 0) {
       throw new Error('Cache max age must be a positive number');
     }
@@ -70,6 +70,11 @@ export class SummarizationService {
   getFullContent(id: string): string | null {
     const entry = this.contentCache.get(id);
     if (!entry) {
+      return null;
+    }
+    // Check if entry has expired
+    if (Date.now() - entry.timestamp > this.cacheMaxAge) {
+      this.contentCache.delete(id);
       return null;
     }
     return entry.content;

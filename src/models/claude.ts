@@ -1,9 +1,15 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { ModelConfig, SummarizationModel } from '../types/models';
 
+interface ClaudeResponse {
+  content: Array<{
+    text: string;
+    type: 'text';
+  }>;
+}
+
 export class ClaudeModel implements SummarizationModel {
-  private client: Anthropic | null = null;
   private config: ModelConfig | null = null;
+  private baseUrl = 'https://api.anthropic.com/v1/messages';
 
   async initialize(config: ModelConfig): Promise<void> {
     if (!config.apiKey) {
@@ -11,15 +17,15 @@ export class ClaudeModel implements SummarizationModel {
     }
 
     const model = config.model || 'claude-3-5-sonnet-20241022';
-    const maxTokens = config.maxTokens || 1024;
+    const maxTokens = config.maxTokens !== undefined ? config.maxTokens : 1024;
 
     // Validate model name
     if (typeof model !== 'string' || !model.trim()) {
       throw new Error('Invalid model name');
     }
 
-    // Validate maxTokens
-    if (typeof maxTokens !== 'number' || maxTokens < 1) {
+    // Validate maxTokens - explicitly check for 0 and negative values
+    if (!Number.isInteger(maxTokens) || maxTokens <= 0) {
       throw new Error('Invalid max tokens value');
     }
 
@@ -28,14 +34,10 @@ export class ClaudeModel implements SummarizationModel {
       maxTokens,
       apiKey: config.apiKey
     };
-
-    this.client = new Anthropic({
-      apiKey: this.config.apiKey,
-    });
   }
 
   async summarize(content: string, type: string): Promise<string> {
-    if (!this.client || !this.config) {
+    if (!this.config) {
       throw new Error('Claude model not initialized');
     }
 
@@ -46,25 +48,60 @@ ${content}
 Summary:`;
 
     try {
-      const message = await this.client.messages.create({
-        model: this.config.model!,
-        max_tokens: this.config.maxTokens || 1024, // Ensure maxTokens is always defined
-        messages: [{ role: 'user', content: prompt }],
-      });
-
-      const responseContent = message.content[0];
-      if ('text' in responseContent) {
-        return responseContent.text;
+      let response: Response;
+      try {
+        response = await fetch(this.baseUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'anthropic-version': '2023-06-01',
+            'x-api-key': this.config.apiKey
+          },
+          body: JSON.stringify({
+            model: this.config.model,
+            max_tokens: this.config.maxTokens,
+            messages: [{
+              role: 'user',
+              content: prompt
+            }]
+          })
+        });
+      } catch (fetchError) {
+        throw new Error(`Network error: ${(fetchError as Error).message}`);
       }
-      throw new Error('Unexpected response format from Claude');
+
+      if (!response.ok) {
+        let errorMessage: string;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error?.message || `HTTP error ${response.status}`;
+        } catch {
+          errorMessage = `HTTP error ${response.status}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      let data: ClaudeResponse;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        throw new Error(`Invalid JSON response: ${(parseError as Error).message}`);
+      }
+
+      if (!Array.isArray(data.content) || !data.content[0]?.text) {
+        throw new Error('Unexpected response format from Claude');
+      }
+
+      return data.content[0].text;
     } catch (error) {
-      throw new Error(`Claude summarization failed: ${(error as Error).message}`);
+      if (error instanceof Error) {
+        throw new Error(`Claude summarization failed: ${error.message}`);
+      }
+      throw new Error('Claude summarization failed: Unknown error');
     }
   }
 
   async cleanup(): Promise<void> {
-    // No cleanup needed for Claude
-    this.client = null;
     this.config = null;
   }
 }
