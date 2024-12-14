@@ -1,0 +1,27 @@
+{
+  "name": "MCP-summarization-functions",
+  "version": "0.1.0",
+  "description": "Provides summarised output from various actions that could otherwise eat up tokens and cause crashes",
+  "type": "module",
+  "main": "build/index.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "preinstall": "node -e \"if (process.versions.node < '22.0.0') { console.error('Requires Node.js 22 or higher. Current version: ' + process.versions.node); process.exit(1); }\"",
+    "build": "tsc",
+    "start": "node build/index.js",
+    "watch": "tsc -w"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@modelcontextprotocol/sdk": "^0.6.0",
+    "execa": "^9.5.2",
+    "uuid": "^11.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^9.0.0",
+    "typescript": "^5.7.2"
+  }
+}
