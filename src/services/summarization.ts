@@ -12,6 +12,7 @@ export class SummarizationService {
   private contentCache: Map<string, CacheEntry>;
   private charThreshold: number;
   private cacheMaxAge: number;
+  private cleanupInterval: NodeJS.Timeout;
 
   constructor(
     model: SummarizationModel,
@@ -21,10 +22,15 @@ export class SummarizationService {
     this.config = config;
     this.contentCache = new Map();
     this.charThreshold = config.charThreshold || 512;
+    
+				// Validate cache max age
+    if (config.cacheMaxAge !== undefined && config.cacheMaxAge <= 0) {
+      throw new Error('Cache max age must be a positive number');
+    }
     this.cacheMaxAge = config.cacheMaxAge || 1000 * 60 * 60; // 1 hour default
 
     // Start periodic cache cleanup
-    setInterval(() => this.cleanupCache(), this.cacheMaxAge);
+    this.cleanupInterval = setInterval(() => this.cleanupCache(), this.cacheMaxAge);
   }
 
   /**
@@ -97,5 +103,6 @@ export class SummarizationService {
   async cleanup(): Promise<void> {
     await this.model.cleanup();
     this.contentCache.clear();
+    clearInterval(this.cleanupInterval);
   }
 }

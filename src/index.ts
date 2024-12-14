@@ -1,5 +1,9 @@
 #!/usr/bin/env node
+import { config } from 'dotenv';
 import { createClaudeModel } from './models/claude.js';
+
+// Load environment variables from .env file if present
+config();
 import { SummarizationService } from './services/summarization.js';
 import { McpServer } from './server/mcp-server.js';
 import { SummarizationConfig } from './types/models.js';

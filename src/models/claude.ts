@@ -10,10 +10,23 @@ export class ClaudeModel implements SummarizationModel {
       throw new Error('API key is required for Claude model');
     }
 
+    const model = config.model || 'claude-3-5-sonnet-20241022';
+    const maxTokens = config.maxTokens || 1024;
+
+    // Validate model name
+    if (typeof model !== 'string' || !model.trim()) {
+      throw new Error('Invalid model name');
+    }
+
+    // Validate maxTokens
+    if (typeof maxTokens !== 'number' || maxTokens < 1) {
+      throw new Error('Invalid max tokens value');
+    }
+
     this.config = {
-      model: config.model || 'claude-3-sonnet-20240229',
-      maxTokens: config.maxTokens || 1024,
-      ...config,
+      model,
+      maxTokens,
+      apiKey: config.apiKey
     };
 
     this.client = new Anthropic({
