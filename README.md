@@ -76,6 +76,11 @@ ALWAYS utilize available features:
 There is NO NEED to process perfect or complete output. Summarized content is ALWAYS preferred over raw data. When in doubt, use summarization.
 ```
 
+<b>Summarization in action on the Ollama repository</b>
+
+![alt text](in_action.png)
+
+
 ## Features
 
 - **Command Output Summarization**  
@@ -119,6 +124,7 @@ The server supports multiple AI providers through environment variables:
 - `MAX_TOKENS`: Maximum tokens for model responses (default: 1024)
 - `SUMMARIZATION_CHAR_THRESHOLD`: Character count threshold for when to summarize (default: 512)
 - `SUMMARIZATION_CACHE_MAX_AGE`: Cache duration in milliseconds (default: 3600000 - 1 hour)
+- `MCP_WORKING_DIR` - fallback directory for trying to find files with relative paths from
 
 ### Example Configurations
 
@@ -152,13 +158,14 @@ Add the server to your MCP configuration file:
 ```json
 {
 		"mcpServers": {
-				"summarization": {
+				"MUST_USE_summarization": {
 						"command": "node",
 						"args": ["path/to/summarization-functions/build/index.js"],
 						"env": {
 								"PROVIDER": "ANTHROPIC",
 								"API_KEY": "your-api-key",
-								"MODEL_ID": "claude-3-5-sonnet-20241022"
+								"MODEL_ID": "claude-3-5-sonnet-20241022",
+                "MCP_WORKING_DIR": "default_working_directory"
 						}
 				}
 		}
