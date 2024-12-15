@@ -7,8 +7,9 @@
 [Features](#features) •
 [AI Agent Integration](#ai-agent-integration) •
 [Installation](#installation) •
-[Usage](#usage) •
-[Architecture](#architecture)
+[Usage](#usage)
+
+[![npm version](https://badge.fury.io/js/%40modelcontextprotocol%2Fsummarization-functions.svg)](https://www.npmjs.com/package/@modelcontextprotocol/summarization-functions)
 
 </div>
 
@@ -17,6 +18,12 @@
 ## Overview
 
 A powerful MCP server that provides intelligent summarization capabilities through a clean, extensible architecture. Built with modern TypeScript and designed for seamless integration with AI workflows.
+
+## Installation
+
+```bash
+npm install @modelcontextprotocol/summarization-functions
+```
 
 ## AI Agent Integration
 
@@ -98,12 +105,6 @@ There is NO NEED to process perfect or complete output. Summarized content is AL
 - **AI Agent Context Optimization**
   Prevent context window overflow and improve AI agent performance through intelligent summarization
 
-## Installation
-
-```bash
-npm install
-```
-
 ## Configuration
 
 The server supports multiple AI providers through environment variables:
@@ -182,9 +183,9 @@ Execute and summarize command output.
 {
   // Required
   command: string,    // Command to execute
+  cwd: string,       // Working directory for command execution
   
   // Optional
-  cwd?: string,       // Working directory for command execution
   hint?: string,      // Focus area: "security_analysis" | "api_surface" | "error_handling" | "dependencies" | "type_definitions"
   output_format?: string  // Format: "text" | "json" | "markdown" | "outline" (default: "text")
 }
@@ -195,7 +196,8 @@ Summarize file contents.
 ```typescript
 {
   // Required
-  paths: string[],    // Array of file paths to summarize
+  paths: string[],    // Array of file paths to summarize (relative to cwd)
+  cwd: string,       // Working directory for resolving file paths
   
   // Optional
   hint?: string,      // Focus area: "security_analysis" | "api_surface" | "error_handling" | "dependencies" | "type_definitions"
@@ -208,10 +210,11 @@ Get directory structure overview.
 ```typescript
 {
   // Required
-  path: string,       // Directory path to summarize
+  path: string,       // Directory path to summarize (relative to cwd)
+  cwd: string,       // Working directory for resolving directory path
   
   // Optional
-  recursive?: boolean,  // Whether to include subdirectories
+  recursive?: boolean,  // Whether to include subdirectories. Safe for deep directories
   hint?: string,       // Focus area: "security_analysis" | "api_surface" | "error_handling" | "dependencies" | "type_definitions"
   output_format?: string   // Format: "text" | "json" | "markdown" | "outline" (default: "text")
 }
@@ -238,18 +241,6 @@ Retrieve the full content for a given summary ID.
   // Required
   id: string         // ID of the stored content
 }
-```
-
-## Architecture
-
-Built with clean architecture principles and modern TypeScript features:
-
-```
-src/
-├── models      # AI model implementations
-├── services    # Core business logic
-├── server      # MCP server handling
-└── types       # Shared type definitions
 ```
 
 ## License
