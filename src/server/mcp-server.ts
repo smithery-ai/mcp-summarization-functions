@@ -210,7 +210,7 @@ export class McpServer {
               },
               recursive: {
                 type: 'boolean',
-                description: 'Whether to include subdirectories',
+                description: 'Whether to include subdirectories, safe for large directories',
               },
               ...formatParameters
             },

@@ -1,5 +1,5 @@
 {
-  "name": "MCP-summarization-functions",
+  "name": "mcp-summarization-functions",
   "version": "0.1.0",
   "description": "Provides summarised output from various actions that could otherwise eat up tokens and cause crashes",
   "type": "module",
@@ -31,5 +31,22 @@
     "jest": "^29.7.0",
     "ts-jest": "^29.2.5",
     "typescript": "^5.7.2"
-  }
+  },
+  "files": [
+    "build/**/*"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Braffolk/MCP-summarization-functions.git"
+  },
+  "keywords": [
+    "mcp",
+    "summarization",
+    "model-context-protocol"
+  ],
+  "author": "Remi Sebastian Kits",
+  "license": "MIT"
 }
