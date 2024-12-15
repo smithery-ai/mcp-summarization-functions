@@ -5,6 +5,7 @@
 ### Intelligent text summarization for the Model Context Protocol
 
 [Features](#features) •
+[AI Agent Integration](#ai-agent-integration) •
 [Installation](#installation) •
 [Usage](#usage) •
 [Architecture](#architecture)
@@ -17,6 +18,55 @@
 
 A powerful MCP server that provides intelligent summarization capabilities through a clean, extensible architecture. Built with modern TypeScript and designed for seamless integration with AI workflows.
 
+## AI Agent Integration
+
+This MCP server was primarily developed to enhance the performance and reliability of AI agents like Roo Cline and Cline. It addresses a critical challenge in AI agent operations: context window management.
+
+### Context Window Optimization
+
+AI agents frequently encounter situations where their context window gets rapidly filled with large outputs from:
+- Command execution results
+- File content readings
+- Directory listings
+- API responses
+- Error messages and stack traces
+
+This server helps maintain efficient context usage by:
+1. Providing concise, relevant summaries instead of full content
+2. Storing full content for reference when needed
+3. Offering focused analysis based on specific needs (security, API surface, etc.)
+4. Supporting multiple output formats for optimal context utilization
+
+### Benefits for AI Agents
+
+- **Reduced Failure Rates**: By preventing context window overflow
+- **Improved Response Quality**: Through focused, relevant summaries
+- **Enhanced Efficiency**: By maintaining important context while reducing noise
+- **Better Resource Management**: Through intelligent content caching and retrieval
+- **Flexible Integration**: Supporting multiple AI providers and configuration options
+
+### Recommended AI Agent Prompt
+
+When integrating with AI agents, include the following in your agent's instructions:
+
+```
+CONTEXT MANAGEMENT
+
+You have access to summarization functions through the MCP server. To prevent context overflow and maintain reliability:
+
+- ALWAYS use summarization for potentially large outputs:
+		• Reading files or executing commands
+		• Analyzing directories or codebases
+		• Processing API responses or error logs
+
+- Use specialized features when available:
+		• Hints for focused analysis (security, API surface, etc.)
+		• Appropriate output formats (json, markdown)
+		• Content IDs for accessing full details when needed
+
+Remember: When in doubt about output length, prefer using summarization to prevent context overflow or wasting tokens.
+```
+
 ## Features
 
 - **Command Output Summarization**  
@@ -28,8 +78,11 @@ A powerful MCP server that provides intelligent summarization capabilities throu
 - **Directory Structure Understanding**  
   Get clear overviews of complex directory structures
 
-- **Flexible Model Support**  
+- **Flexible Model Support**
   Use models from different providers
+
+- **AI Agent Context Optimization**
+  Prevent context window overflow and improve AI agent performance through intelligent summarization
 
 ## Installation
 
