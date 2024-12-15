@@ -8,7 +8,6 @@
 ## Future Enhancements
 
 - **Support for Various Models**: Extend the `OpenAICompatible` class to support different models like:
-  - **Grok**: Add support for xAI's Grok model.
   - **Gemini**: Add support for Google's Gemini model.
 
 ## Tasks

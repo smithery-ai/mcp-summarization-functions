@@ -7,8 +7,7 @@
 [Features](#features) •
 [Installation](#installation) •
 [Usage](#usage) •
-[Architecture](#architecture) •
-[Roadmap](#roadmap)
+[Architecture](#architecture)
 
 </div>
 
@@ -30,7 +29,7 @@ A powerful MCP server that provides intelligent summarization capabilities throu
   Get clear overviews of complex directory structures
 
 - **Flexible Model Support**  
-  Modular design for easy integration of different AI models
+  Use models from different providers
 
 ## Installation
 
@@ -84,7 +83,6 @@ API_KEY=your-google-key
 MODEL_ID=gemini-2.0-flash-exp
 ```
 
-
 ## Usage
 
 Add the server to your MCP configuration file:
@@ -105,11 +103,73 @@ Add the server to your MCP configuration file:
 }
 ```
 
-The server will be available to use through MCP tools:
-- `summarize_command`: Execute and summarize command output
-- `summarize_files`: Summarize file contents
-- `summarize_directory`: Get directory structure overview
-- `summarize_text`: Summarize arbitrary text content
+### Available Functions
+
+The server provides the following summarization tools:
+
+#### `summarize_command`
+Execute and summarize command output.
+```typescript
+{
+  // Required
+  command: string,    // Command to execute
+  
+  // Optional
+  cwd?: string,       // Working directory for command execution
+  hint?: string,      // Focus area: "security_analysis" | "api_surface" | "error_handling" | "dependencies" | "type_definitions"
+  output_format?: string  // Format: "text" | "json" | "markdown" | "outline" (default: "text")
+}
+```
+
+#### `summarize_files`
+Summarize file contents.
+```typescript
+{
+  // Required
+  paths: string[],    // Array of file paths to summarize
+  
+  // Optional
+  hint?: string,      // Focus area: "security_analysis" | "api_surface" | "error_handling" | "dependencies" | "type_definitions"
+  output_format?: string  // Format: "text" | "json" | "markdown" | "outline" (default: "text")
+}
+```
+
+#### `summarize_directory`
+Get directory structure overview.
+```typescript
+{
+  // Required
+  path: string,       // Directory path to summarize
+  
+  // Optional
+  recursive?: boolean,  // Whether to include subdirectories
+  hint?: string,       // Focus area: "security_analysis" | "api_surface" | "error_handling" | "dependencies" | "type_definitions"
+  output_format?: string   // Format: "text" | "json" | "markdown" | "outline" (default: "text")
+}
+```
+
+#### `summarize_text`
+Summarize arbitrary text content.
+```typescript
+{
+  // Required
+  content: string,    // Text content to summarize
+  type: string,       // Type of content (e.g., "log output", "API response")
+  
+  // Optional
+  hint?: string,      // Focus area: "security_analysis" | "api_surface" | "error_handling" | "dependencies" | "type_definitions"
+  output_format?: string  // Format: "text" | "json" | "markdown" | "outline" (default: "text")
+}
+```
+
+#### `get_full_content`
+Retrieve the full content for a given summary ID.
+```typescript
+{
+  // Required
+  id: string         // ID of the stored content
+}
+```
 
 ## Architecture
 
@@ -121,46 +181,6 @@ src/
 ├── services    # Core business logic
 ├── server      # MCP server handling
 └── types       # Shared type definitions
-```
-
-## Roadmap
-
-### Upcoming Enhancements
-
-- **Context-Aware Processing**
-  - Hint-based summarization focus (e.g., security, API surface, dependencies)
-  - Format-specific processing
-  - Relationship preservation
-
-- **Flexible Output Formats**
-  - JSON structured output
-  - Markdown with sections
-  - Hierarchical outline
-
-- **Enhanced Analysis**
-  - Security pattern detection
-  - API surface documentation
-  - Dependency tracking
-  - Error handling analysis
-
-See the [enhancement specification](docs/spec/enhanced-summarization.md) and [implementation roadmap](docs/spec/implementation-roadmap.md) for detailed information.
-
-### Example Future Usage
-
-```typescript
-// Security analysis in JSON format
-const securityAnalysis = await summarize_files({
-  paths: ["src/auth.ts"],
-  hint: "security_analysis",
-  output_format: "json"
-});
-
-// API surface documentation in markdown
-const apiDocs = await summarize_files({
-  paths: ["src/api/"],
-  hint: "api_surface",
-  output_format: "markdown"
-});
 ```
 
 ## License

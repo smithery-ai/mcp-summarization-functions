@@ -15,20 +15,28 @@ import { SummarizationService } from '../services/summarization';
 interface SummarizeCommandArgs {
   command: string;
   cwd?: string;
+  hint?: string;
+  output_format?: string;
 }
 
 interface SummarizeFilesArgs {
   paths: string[];
+  hint?: string;
+  output_format?: string;
 }
 
 interface SummarizeDirectoryArgs {
   path: string;
   recursive?: boolean;
+  hint?: string;
+  output_format?: string;
 }
 
 interface SummarizeTextArgs {
   content: string;
   type: string;
+  hint?: string;
+  output_format?: string;
 }
 
 interface GetFullContentArgs {
@@ -36,22 +44,36 @@ interface GetFullContentArgs {
 }
 
 // Type guards
+function isValidFormatParams(args: any): boolean {
+  if ('hint' in args && typeof args.hint !== 'string') return false;
+		if ('output_format' in args && typeof args.output_format !== 'string') return false;
+		return true;
+}
+
 function isSummarizeCommandArgs(args: unknown): args is SummarizeCommandArgs {
-  return typeof args === 'object' && args !== null && 'command' in args && typeof (args as any).command === 'string';
+		return typeof args === 'object' && args !== null &&
+				'command' in args && typeof (args as any).command === 'string' &&
+    isValidFormatParams(args);
 }
 
 function isSummarizeFilesArgs(args: unknown): args is SummarizeFilesArgs {
-  return typeof args === 'object' && args !== null && 'paths' in args && Array.isArray((args as any).paths);
+  return typeof args === 'object' && args !== null &&
+    'paths' in args && Array.isArray((args as any).paths) &&
+    isValidFormatParams(args);
 }
 
 function isSummarizeDirectoryArgs(args: unknown): args is SummarizeDirectoryArgs {
-  return typeof args === 'object' && args !== null && 'path' in args && typeof (args as any).path === 'string';
+		return typeof args === 'object' && args !== null &&
+				'path' in args && typeof (args as any).path === 'string' &&
+				(!('recursive' in args) || typeof (args as any).recursive === 'boolean') &&
+				isValidFormatParams(args);
 }
 
 function isSummarizeTextArgs(args: unknown): args is SummarizeTextArgs {
-  return typeof args === 'object' && args !== null && 
-    'content' in args && typeof (args as any).content === 'string' &&
-    'type' in args && typeof (args as any).type === 'string';
+		return typeof args === 'object' && args !== null &&
+				'content' in args && typeof (args as any).content === 'string' &&
+				'type' in args && typeof (args as any).type === 'string' &&
+				isValidFormatParams(args);
 }
 
 function isGetFullContentArgs(args: unknown): args is GetFullContentArgs {
@@ -88,6 +110,20 @@ export class McpServer {
   }
 
   private setupToolHandlers(): void {
+    const formatParameters = {
+      hint: {
+        type: 'string',
+        description: 'Focus area for summarization (e.g., "security_analysis", "api_surface", "error_handling", "dependencies", "type_definitions")',
+        enum: ['security_analysis', 'api_surface', 'error_handling', 'dependencies', 'type_definitions']
+      },
+      output_format: {
+        type: 'string',
+        description: 'Desired output format (e.g., "text", "json", "markdown", "outline")',
+        enum: ['text', 'json', 'markdown', 'outline'],
+        default: 'text'
+      }
+    };
+    
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
         {
@@ -104,6 +140,7 @@ export class McpServer {
                 type: 'string',
                 description: 'Working directory for command execution',
               },
+              ...formatParameters
             },
             required: ['command'],
           },
@@ -121,6 +158,7 @@ export class McpServer {
                 },
                 description: 'Array of file paths to summarize',
               },
+              ...formatParameters
             },
             required: ['paths'],
           },
@@ -139,6 +177,7 @@ export class McpServer {
                 type: 'boolean',
                 description: 'Whether to include subdirectories',
               },
+              ...formatParameters
             },
             required: ['path'],
           },
@@ -157,6 +196,7 @@ export class McpServer {
                 type: 'string',
                 description: 'Type of content (e.g., "log output", "API response")',
               },
+              ...formatParameters
             },
             required: ['content', 'type'],
           },
@@ -250,7 +290,10 @@ export class McpServer {
     });
 
     const output = stdout + (stderr ? `\nError: ${stderr}` : '');
-    const result = await this.summarizationService.maybeSummarize(output, 'command output');
+    const result = await this.summarizationService.maybeSummarize(output, 'command output', {
+      hint: args.hint,
+      output_format: args.output_format
+    });
 
     return {
       content: [
@@ -270,7 +313,11 @@ export class McpServer {
         const content = await fs.readFile(filePath, 'utf-8');
         const result = await this.summarizationService.maybeSummarize(
           content,
-          `code from ${path.basename(filePath)}`
+          `code from ${path.basename(filePath)}`,
+          {
+            hint: args.hint,
+            output_format: args.output_format
+          }
         );
         return { path: filePath, ...result };
       })
@@ -314,7 +361,10 @@ export class McpServer {
     };
 
     const listing = await listDir(args.path, args.recursive ?? false);
-    const result = await this.summarizationService.maybeSummarize(listing, 'directory listing');
+    const result = await this.summarizationService.maybeSummarize(listing, 'directory listing', {
+      hint: args.hint,
+      output_format: args.output_format
+    });
 
     return {
       content: [
@@ -329,7 +379,10 @@ export class McpServer {
   }
 
   private async handleSummarizeText(args: SummarizeTextArgs) {
-    const result = await this.summarizationService.maybeSummarize(args.content, args.type);
+    const result = await this.summarizationService.maybeSummarize(args.content, args.type, {
+      hint: args.hint,
+      output_format: args.output_format
+    });
 
     return {
       content: [
@@ -338,7 +391,7 @@ export class McpServer {
           text: result.isSummarized
             ? `Summary (full content ID: ${result.id}):\n${result.text}`
             : result.text,
-        },
+        }
       ],
     };
   }

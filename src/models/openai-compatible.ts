@@ -1,4 +1,5 @@
-import { ModelConfig, SummarizationModel } from '../types/models';
+import { ModelConfig, SummarizationModel, SummarizationOptions } from '../types/models';
+import { constructPrompt } from './prompts';
 
 export class OpenAICompatible implements SummarizationModel {
   protected config: ModelConfig | null = null;

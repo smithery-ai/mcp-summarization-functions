@@ -1,4 +1,5 @@
-import { ModelConfig, SummarizationModel } from '../types/models';
+import { ModelConfig, SummarizationModel, SummarizationOptions } from '../types/models';
+import { constructPrompt } from './prompts';
 
 interface AnthropicResponse {
   content: Array<{
@@ -36,16 +37,16 @@ export class AnthropicModel implements SummarizationModel {
     };
   }
 
-  async summarize(content: string, type: string): Promise<string> {
+  async summarize(content: string, type: string, options?: SummarizationOptions): Promise<string> {
     if (!this.config) {
       throw new Error('Anthropic model not initialized');
     }
 
-    const prompt = `Summarize the following ${type} in a clear, concise way that would be useful for an AI agent. Focus on the most important information and maintain technical accuracy:
-
-${content}
-
-Summary:`;
+    const result = constructPrompt('anthropic', content, type, options);
+    if (result.format !== 'anthropic') {
+      throw new Error('Unexpected prompt format returned');
+    }
+    const prompt = result.prompt;
 
     try {
       let response: Response;

@@ -84,7 +84,14 @@ export class SummarizationService {
    * Summarize content if it exceeds the threshold
    * @returns The original content if below threshold, or a summary with the original content's ID
    */
-  async maybeSummarize(content: string, type: string): Promise<{
+  async maybeSummarize(
+    content: string,
+    type: string,
+    options?: {
+      hint?: string;
+      output_format?: string;
+    }
+  ): Promise<{
     text: string;
     id?: string;
     isSummarized: boolean;
