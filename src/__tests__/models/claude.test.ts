@@ -10,18 +10,19 @@ global.fetch = mockFetch;
 // Mock successful response
 const mockSuccessResponse = {
   content: [{ text: 'Mocked summary response', type: 'text' }],
-  model: 'claude-3-sonnet-20240229',
+  model: 'claude-3-5-sonnet-20241022',
   role: 'assistant'
 };
 
 // Import after mocking
-import { ClaudeModel, createClaudeModel } from '../../models/claude';
-import { ModelConfig } from '../../types/models';
+import { AnthropicModel, createAnthropicModel } from '../../models/anthropic.js';
+import { ModelConfig, SummarizationOptions } from '../../types/models.js';
+import { constructPrompt } from '../../models/prompts.js';
 
-describe('ClaudeModel', () => {
+describe('AnthropicModel', () => {
   const MOCK_API_KEY = 'dummy-key';
   const REAL_API_KEY = process.env.ANTHROPIC_API_KEY || '';
-  let model: ClaudeModel;
+  let model: AnthropicModel;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -29,7 +30,7 @@ describe('ClaudeModel', () => {
       ok: true,
       json: async () => mockSuccessResponse
     } as Response);
-    model = createClaudeModel() as ClaudeModel;
+    model = createAnthropicModel() as AnthropicModel;
   });
 
   describe('Unit Tests', () => {
@@ -49,7 +50,7 @@ describe('ClaudeModel', () => {
 
       it('should throw error if API key is missing', async () => {
         await expect(model.initialize({} as ModelConfig))
-          .rejects.toThrow('API key is required for Claude model');
+          .rejects.toThrow('API key is required for Anthropic model');
       });
 
       it('should validate model name', async () => {
@@ -94,7 +95,7 @@ describe('ClaudeModel', () => {
       it('should summarize content successfully', async () => {
         const content = 'Test content';
         const type = 'text';
-        const expectedPrompt = `Summarize the following ${type} in a clear, concise way that would be useful for an AI agent. Focus on the most important information and maintain technical accuracy:
+        const expectedPrompt = `Summarize the following ${type} in a clear, concise way that would be useful for an AI agent. Focus on the most important information and maintain technical accuracy.
 
 ${content}
 
@@ -127,10 +128,10 @@ Summary:`;
       });
 
       it('should throw error if model is not initialized', async () => {
-        const uninitializedModel = createClaudeModel();
+        const uninitializedModel = createAnthropicModel();
         await expect(
           uninitializedModel.summarize('content', 'text')
-        ).rejects.toThrow('Claude model not initialized');
+        ).rejects.toThrow('Anthropic model not initialized');
       });
 
       it('should handle API errors', async () => {
@@ -144,7 +145,7 @@ Summary:`;
 
         await expect(
           model.summarize('content', 'text')
-        ).rejects.toThrow('Claude summarization failed: API error');
+        ).rejects.toThrow('Anthropic summarization failed: API error');
       });
 
       it('should handle network errors', async () => {
@@ -152,7 +153,7 @@ Summary:`;
 
         await expect(
           model.summarize('content', 'text')
-        ).rejects.toThrow('Claude summarization failed: Network error');
+        ).rejects.toThrow('Anthropic summarization failed: Network error');
       });
 
       it('should handle unexpected response format', async () => {
@@ -163,7 +164,7 @@ Summary:`;
 
         await expect(
           model.summarize('content', 'text')
-        ).rejects.toThrow('Unexpected response format from Claude');
+        ).rejects.toThrow('Unexpected response format from Anthropic');
       });
     });
 
@@ -174,14 +175,14 @@ Summary:`;
 
         await expect(
           model.summarize('content', 'text')
-        ).rejects.toThrow('Claude model not initialized');
+        ).rejects.toThrow('Anthropic model not initialized');
       });
     });
 
     describe('factory function', () => {
       it('should create a new instance', () => {
-        const instance = createClaudeModel();
-        expect(instance).toBeInstanceOf(ClaudeModel);
+        const instance = createAnthropicModel();
+        expect(instance).toBeInstanceOf(AnthropicModel);
       });
     });
   });
@@ -192,7 +193,7 @@ Summary:`;
       beforeEach(async () => {
         // Use node-fetch for integration tests
         global.fetch = nodeFetch as unknown as typeof fetch;
-        model = createClaudeModel() as ClaudeModel;
+        model = createAnthropicModel() as AnthropicModel;
         await model.initialize({ apiKey: REAL_API_KEY });
       });
 
@@ -206,6 +207,26 @@ Summary:`;
         const summary = await model.summarize(content, 'text');
         expect(summary).toBeTruthy();
         expect(typeof summary).toBe('string');
+      }, 10000); // Increase timeout for API call
+
+      it('should summarize with hint and output format using real API', async () => {
+        const content = `
+          function authenticate(user, password) {
+            if (password === 'admin123') {
+              return true;
+            }
+            return false;
+          }
+        `;
+        const options: SummarizationOptions = {
+          hint: 'security_analysis',
+          output_format: 'json'
+        };
+        const summary = await model.summarize(content, 'code', options);
+        expect(summary).toBeTruthy();
+        expect(typeof summary).toBe('string');
+        // Should be valid JSON since we requested JSON format
+        expect(() => JSON.parse(summary)).not.toThrow();
       }, 10000); // Increase timeout for API call
     });
   });

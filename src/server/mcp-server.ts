@@ -9,26 +9,34 @@ import {
 import { execa } from 'execa';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { SummarizationService } from '../services/summarization';
+import { SummarizationService } from '../services/summarization.js';
 
 // Type definitions for tool arguments
 interface SummarizeCommandArgs {
   command: string;
   cwd?: string;
+  hint?: string;
+  output_format?: string;
 }
 
 interface SummarizeFilesArgs {
   paths: string[];
+  hint?: string;
+  output_format?: string;
 }
 
 interface SummarizeDirectoryArgs {
   path: string;
   recursive?: boolean;
+  hint?: string;
+  output_format?: string;
 }
 
 interface SummarizeTextArgs {
   content: string;
   type: string;
+  hint?: string;
+  output_format?: string;
 }
 
 interface GetFullContentArgs {
@@ -36,33 +44,70 @@ interface GetFullContentArgs {
 }
 
 // Type guards
+function isValidFormatParams(args: any): boolean {
+  if ('hint' in args && typeof args.hint !== 'string') return false;
+		if ('output_format' in args && typeof args.output_format !== 'string') return false;
+		return true;
+}
+
 function isSummarizeCommandArgs(args: unknown): args is SummarizeCommandArgs {
-  return typeof args === 'object' && args !== null && 'command' in args && typeof (args as any).command === 'string';
+		return typeof args === 'object' && args !== null &&
+				'command' in args && typeof (args as any).command === 'string' &&
+    isValidFormatParams(args);
 }
 
 function isSummarizeFilesArgs(args: unknown): args is SummarizeFilesArgs {
-  return typeof args === 'object' && args !== null && 'paths' in args && Array.isArray((args as any).paths);
+  return typeof args === 'object' && args !== null &&
+    'paths' in args && Array.isArray((args as any).paths) &&
+    isValidFormatParams(args);
 }
 
 function isSummarizeDirectoryArgs(args: unknown): args is SummarizeDirectoryArgs {
-  return typeof args === 'object' && args !== null && 'path' in args && typeof (args as any).path === 'string';
+		return typeof args === 'object' && args !== null &&
+				'path' in args && typeof (args as any).path === 'string' &&
+				(!('recursive' in args) || typeof (args as any).recursive === 'boolean') &&
+				isValidFormatParams(args);
 }
 
 function isSummarizeTextArgs(args: unknown): args is SummarizeTextArgs {
-  return typeof args === 'object' && args !== null && 
-    'content' in args && typeof (args as any).content === 'string' &&
-    'type' in args && typeof (args as any).type === 'string';
+		return typeof args === 'object' && args !== null &&
+				'content' in args && typeof (args as any).content === 'string' &&
+				'type' in args && typeof (args as any).type === 'string' &&
+				isValidFormatParams(args);
 }
 
 function isGetFullContentArgs(args: unknown): args is GetFullContentArgs {
   return typeof args === 'object' && args !== null && 'id' in args && typeof (args as any).id === 'string';
 }
 
+const directioriesIgnore = [
+  "node_modules",
+  "build",
+  "dist",
+  "coverage",
+  ".git",
+  ".idea",
+  ".vscode",
+  "out",
+  "public",
+  "tmp",
+  "temp",
+  "vendor",
+  "logs"
+]
+
 export class McpServer {
   private server: Server;
   private summarizationService: SummarizationService;
+  private workingDirectory: string;
 
   constructor(summarizationService: SummarizationService) {
+    // Get working directory from MCP_WORKING_DIR environment variable
+    this.workingDirectory = process.env.MCP_WORKING_DIR || '/';
+    if (this.workingDirectory === '/') {
+      console.error('Warning: MCP_WORKING_DIR not set, using root directory');
+    }
+    console.error('Working directory:', this.workingDirectory);
     this.summarizationService = summarizationService;
 
     this.server = new Server(
@@ -88,6 +133,20 @@ export class McpServer {
   }
 
   private setupToolHandlers(): void {
+    const formatParameters = {
+      hint: {
+        type: 'string',
+        description: 'Focus area for summarization (e.g., "security_analysis", "api_surface", "error_handling", "dependencies", "type_definitions")',
+        enum: ['security_analysis', 'api_surface', 'error_handling', 'dependencies', 'type_definitions']
+      },
+      output_format: {
+        type: 'string',
+        description: 'Desired output format (e.g., "text", "json", "markdown", "outline")',
+        enum: ['text', 'json', 'markdown', 'outline'],
+        default: 'text'
+      }
+    };
+    
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
         {
@@ -104,8 +163,9 @@ export class McpServer {
                 type: 'string',
                 description: 'Working directory for command execution',
               },
+              ...formatParameters
             },
-            required: ['command'],
+            required: ['command', 'cwd'],
           },
         },
         {
@@ -119,8 +179,9 @@ export class McpServer {
                 items: {
                   type: 'string',
                 },
-                description: 'Array of file paths to summarize',
+                description: 'Array of absolute file paths to summarize',
               },
+              ...formatParameters
             },
             required: ['paths'],
           },
@@ -133,12 +194,13 @@ export class McpServer {
             properties: {
               path: {
                 type: 'string',
-                description: 'Directory path to summarize',
+                description: 'Absolute directory path to summarize',
               },
               recursive: {
                 type: 'boolean',
                 description: 'Whether to include subdirectories',
               },
+              ...formatParameters
             },
             required: ['path'],
           },
@@ -157,6 +219,7 @@ export class McpServer {
                 type: 'string',
                 description: 'Type of content (e.g., "log output", "API response")',
               },
+              ...formatParameters
             },
             required: ['content', 'type'],
           },
@@ -250,7 +313,10 @@ export class McpServer {
     });
 
     const output = stdout + (stderr ? `\nError: ${stderr}` : '');
-    const result = await this.summarizationService.maybeSummarize(output, 'command output');
+    const result = await this.summarizationService.maybeSummarize(output, 'command output', {
+      hint: args.hint,
+      output_format: args.output_format
+    });
 
     return {
       content: [
@@ -267,10 +333,15 @@ export class McpServer {
   private async handleSummarizeFiles(args: SummarizeFilesArgs) {
     const results = await Promise.all(
       args.paths.map(async (filePath: string) => {
-        const content = await fs.readFile(filePath, 'utf-8');
+        const resolvedPath = await this.parsePath(filePath);
+        const content = await fs.readFile(resolvedPath, 'utf-8');
         const result = await this.summarizationService.maybeSummarize(
           content,
-          `code from ${path.basename(filePath)}`
+          `code from ${path.basename(filePath)}`,
+          {
+            hint: args.hint,
+            output_format: args.output_format
+          }
         );
         return { path: filePath, ...result };
       })
@@ -295,26 +366,96 @@ export class McpServer {
     };
   }
 
+  private async parsePath(filePath: string): Promise<string> {
+    // Always treat paths as relative to the working directory
+    const resolvedPath = path.join(this.workingDirectory, filePath);
+    
+    try {
+      // Check if path exists and is accessible
+      const stats = await fs.stat(resolvedPath);
+      return resolvedPath;
+    } catch (error) {
+      try {
+        // Check if path exists and is accessible without the working directory
+        const stats = await fs.stat(filePath);
+        return filePath;
+      } catch (error) {
+        throw new McpError(
+          ErrorCode.InvalidRequest,
+          `Path not found: ${filePath} (tried ${resolvedPath} and ${filePath})`
+        );
+      }
+    }
+  }
+
   private async handleSummarizeDirectory(args: SummarizeDirectoryArgs) {
-    const listDir = async (dir: string, recursive: boolean): Promise<string> => {
+    const MAX_DEPTH = 5; // Maximum directory depth
+    const MAX_FILES = 1000; // Maximum number of files to process
+    const MAX_FILES_PER_DIR = 100; // Maximum files to show per directory
+
+				const resolvedPath = await this.parsePath(args.path);
+    let totalFiles = 0;
+    let truncated = false;
+
+    const listDir = async (dir: string, recursive: boolean, depth: number = 0): Promise<string> => {
+      if (depth >= MAX_DEPTH) {
+        return `[Directory depth limit (${MAX_DEPTH}) reached]\n`;
+      }
+
       const items = await fs.readdir(dir, { withFileTypes: true });
       let output = '';
+      let fileCount = 0;
 
-      for (const item of items) {
+						// Sort items to show directories first
+      const sortedItems = items.sort((a, b) => {
+        if (a.isDirectory() && !b.isDirectory()) return -1;
+								if (!a.isDirectory() && b.isDirectory()) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      for (const item of sortedItems) {
+        if (totalFiles >= MAX_FILES) {
+          truncated = true;
+          break;
+        }
+
         const fullPath = path.join(dir, item.name);
-        if (item.isDirectory() && recursive) {
-          output += `${fullPath}/\n`;
-          output += await listDir(fullPath, recursive);
+        const relativePath = path.relative(resolvedPath, fullPath);
+
+        if (item.isDirectory()) {
+          output += `${relativePath}/\n`;
+          if (directioriesIgnore.includes(item.name)) {
+            output += `[${item.name}/ contents skipped]\n`;
+            continue;
+          }
+          if (recursive) {
+            output += await listDir(fullPath, recursive, depth + 1);
+          }
         } else {
-          output += `${fullPath}\n`;
+          if (fileCount >= MAX_FILES_PER_DIR) {
+            if (fileCount === MAX_FILES_PER_DIR) {
+              output += `[${items.length - fileCount} more files in this directory]\n`;
+            }
+            continue;
+          }
+          output += `${relativePath}\n`;
+          fileCount++;
+          totalFiles++;
         }
       }
 
       return output;
     };
 
-    const listing = await listDir(args.path, args.recursive ?? false);
-    const result = await this.summarizationService.maybeSummarize(listing, 'directory listing');
+    let listing = await listDir(resolvedPath, args.recursive ?? false);
+    if (truncated) {
+      listing += `\n[Output truncated: Reached maximum file limit of ${MAX_FILES}]\n`;
+    }
+
+    const result = await this.summarizationService.maybeSummarize(listing, 'directory listing', {
+      hint: args.hint,
+      output_format: args.output_format
+    });
 
     return {
       content: [
@@ -329,7 +470,10 @@ export class McpServer {
   }
 
   private async handleSummarizeText(args: SummarizeTextArgs) {
-    const result = await this.summarizationService.maybeSummarize(args.content, args.type);
+    const result = await this.summarizationService.maybeSummarize(args.content, args.type, {
+      hint: args.hint,
+      output_format: args.output_format
+    });
 
     return {
       content: [
@@ -338,7 +482,7 @@ export class McpServer {
           text: result.isSummarized
             ? `Summary (full content ID: ${result.id}):\n${result.text}`
             : result.text,
-        },
+        }
       ],
     };
   }

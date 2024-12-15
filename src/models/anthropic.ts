@@ -1,19 +1,20 @@
-import { ModelConfig, SummarizationModel } from '../types/models';
+import { ModelConfig, SummarizationModel, SummarizationOptions } from '../types/models.js';
+import { constructPrompt } from './prompts.js';
 
-interface ClaudeResponse {
+interface AnthropicResponse {
   content: Array<{
     text: string;
     type: 'text';
   }>;
 }
 
-export class ClaudeModel implements SummarizationModel {
+export class AnthropicModel implements SummarizationModel {
   private config: ModelConfig | null = null;
   private baseUrl = 'https://api.anthropic.com/v1/messages';
 
   async initialize(config: ModelConfig): Promise<void> {
     if (!config.apiKey) {
-      throw new Error('API key is required for Claude model');
+      throw new Error('API key is required for Anthropic model');
     }
 
     const model = config.model || 'claude-3-5-sonnet-20241022';
@@ -36,16 +37,16 @@ export class ClaudeModel implements SummarizationModel {
     };
   }
 
-  async summarize(content: string, type: string): Promise<string> {
+  async summarize(content: string, type: string, options?: SummarizationOptions): Promise<string> {
     if (!this.config) {
-      throw new Error('Claude model not initialized');
+      throw new Error('Anthropic model not initialized');
     }
 
-    const prompt = `Summarize the following ${type} in a clear, concise way that would be useful for an AI agent. Focus on the most important information and maintain technical accuracy:
-
-${content}
-
-Summary:`;
+    const result = constructPrompt('anthropic', content, type, options);
+    if (result.format !== 'anthropic') {
+      throw new Error('Unexpected prompt format returned');
+    }
+    const prompt = result.prompt;
 
     try {
       let response: Response;
@@ -81,7 +82,7 @@ Summary:`;
         throw new Error(errorMessage);
       }
 
-      let data: ClaudeResponse;
+      let data: AnthropicResponse;
       try {
         data = await response.json();
       } catch (parseError) {
@@ -89,15 +90,15 @@ Summary:`;
       }
 
       if (!Array.isArray(data.content) || !data.content[0]?.text) {
-        throw new Error('Unexpected response format from Claude');
+        throw new Error('Unexpected response format from Anthropic API');
       }
 
       return data.content[0].text;
     } catch (error) {
       if (error instanceof Error) {
-        throw new Error(`Claude summarization failed: ${error.message}`);
+        throw new Error(`Anthropic summarization failed: ${error.message}`);
       }
-      throw new Error('Claude summarization failed: Unknown error');
+      throw new Error('Anthropic summarization failed: Unknown error');
     }
   }
 
@@ -106,7 +107,7 @@ Summary:`;
   }
 }
 
-// Factory function to create a new Claude model instance
-export function createClaudeModel(): SummarizationModel {
-  return new ClaudeModel();
+// Factory function to create a new Anthropic model instance
+export function createAnthropicModel(): SummarizationModel {
+  return new AnthropicModel();
 }

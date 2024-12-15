@@ -1,6 +1,6 @@
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { SummarizationService } from '../../services/summarization';
-import { SummarizationModel, ModelConfig } from '../../types/models';
+import { SummarizationService } from '../../services/summarization.js';
+import { SummarizationModel, ModelConfig } from '../../types/models.js';
 
 class MockModel implements SummarizationModel {
   private initialized = false;
