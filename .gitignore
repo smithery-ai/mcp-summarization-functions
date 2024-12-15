@@ -26,3 +26,6 @@ dist/
 Thumbs.db
 
 .env
+
+build/
+build/*

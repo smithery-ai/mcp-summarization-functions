@@ -115,7 +115,8 @@ describe('McpServer', () => {
 
       it('should read and return file contents', async () => {
         const response = await callTool('summarize_files', { 
-          paths: [path.join(testFilesDir, 'test1.txt')] 
+          paths: ['test1.txt'],
+          cwd: testFilesDir
         });
         
         expect(response.content[0].text).toContain('This is test file 1');
@@ -124,9 +125,10 @@ describe('McpServer', () => {
       it('should handle multiple files', async () => {
         const response = await callTool('summarize_files', { 
           paths: [
-            path.join(testFilesDir, 'test1.txt'),
-            path.join(testFilesDir, 'test2.txt')
-          ] 
+            'test1.txt',
+            'test2.txt'
+          ],
+          cwd: testFilesDir
         });
         
         expect(response.content[0].text).toContain('This is test file 1');
@@ -139,7 +141,8 @@ describe('McpServer', () => {
 
       it('should list directory contents', async () => {
         const response = await callTool('summarize_directory', { 
-          path: testFilesDir 
+          cwd: testFilesDir,
+          path: '.'
         });
         
         // Check for the presence of both test files in the output
@@ -221,9 +224,34 @@ describe('McpServer', () => {
     });
 
     it('should handle file read errors', async () => {
-      await expect(callTool('summarize_files', { 
-        paths: ['nonexistent.txt'] 
+      await expect(callTool('summarize_files', {
+        paths: ['nonexistent.txt'],
+        cwd: process.cwd()
       })).rejects.toThrow('Error in summarize_files');
+    });
+    
+    it('should require cwd parameter for summarize_files', async () => {
+      await expect(callTool('summarize_files', {
+        paths: ['test1.txt']
+      })).rejects.toThrow('Invalid arguments for summarize_files');
+    });
+    
+    it('should require cwd parameter for summarize_directory', async () => {
+      await expect(callTool('summarize_directory', {
+        path: '.'
+      })).rejects.toThrow('Invalid arguments for summarize_directory');
+    });
+    
+    it('should handle invalid cwd path', async () => {
+      await expect(callTool('summarize_files', {
+        paths: ['test1.txt'],
+        cwd: '/nonexistent/directory'
+      })).rejects.toThrow('Error in summarize_files');
+    
+      await expect(callTool('summarize_directory', {
+        path: '.',
+        cwd: '/nonexistent/directory'
+      })).rejects.toThrow('Error in summarize_directory');
     });
   });
 });
