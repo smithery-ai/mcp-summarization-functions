@@ -30,9 +30,14 @@ export class OpenAICompatible implements SummarizationModel {
     };
   }
 
-  async summarize(content: string, type: string): Promise<string> {
+  async summarize(content: string, type: string, options?: SummarizationOptions): Promise<string> {
     if (!this.config) {
       throw new Error('Model not initialized');
+    }
+
+    const result = constructPrompt('openai', content, type, options);
+				if (result.format !== 'openai') {
+      throw new Error('Unexpected prompt format returned');
     }
 
     const { apiKey, model, maxTokens } = this.config;
@@ -45,16 +50,7 @@ export class OpenAICompatible implements SummarizationModel {
       },
       body: JSON.stringify({
         model,
-        messages: [
-          {
-            role: 'system',
-            content: `You are a helpful assistant that summarizes ${type} content.`,
-          },
-          {
-            role: 'user',
-            content: `Summarize the following ${type} content:\n\n${content}`,
-          },
-        ],
+        messages: result.messages,
         max_tokens: maxTokens,
       }),
     });

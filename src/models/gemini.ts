@@ -40,9 +40,14 @@ export class GeminiModel implements SummarizationModel {
     };
   }
 
-  async summarize(content: string, type: string): Promise<string> {
+  async summarize(content: string, type: string, options?: SummarizationOptions): Promise<string> {
     if (!this.config) {
       throw new Error('Model not initialized');
+    }
+
+    const result = constructPrompt('gemini', content, type, options);
+    if (result.format !== 'gemini') {
+      throw new Error('Unexpected prompt format returned');
     }
 
     const { apiKey, model, maxTokens } = this.config;
@@ -53,7 +58,7 @@ export class GeminiModel implements SummarizationModel {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: content }] }],
+        contents: result.messages,
         generationConfig: {
           maxOutputTokens: maxTokens,
         },
