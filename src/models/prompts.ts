@@ -1,4 +1,4 @@
-import { SummarizationOptions } from '../types/models';
+import { SummarizationOptions } from '../types/models.js';
 
 /**
  * Formats for different model providers

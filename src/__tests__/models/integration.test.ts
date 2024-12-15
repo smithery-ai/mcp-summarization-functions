@@ -4,10 +4,10 @@ import nodeFetch from 'node-fetch';
 config();
 
 // Import models
-import { createAnthropicModel } from '../../models/anthropic';
-import { OpenAIModel } from '../../models/openai';
-import { GeminiModel } from '../../models/gemini';
-import { SummarizationModel, SummarizationOptions } from '../../types/models';
+import { createAnthropicModel } from '../../models/anthropic.js';
+import { OpenAIModel } from '../../models/openai.js';
+import { GeminiModel } from '../../models/gemini.js';
+import { SummarizationModel, SummarizationOptions } from '../../types/models.js';
 
 // Get API keys from environment
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';

@@ -1,8 +1,8 @@
-import { ModelConfig, SummarizationModel } from "src/types/models";
-import { AnthropicModel } from "./anthropic";
-import { OpenAIModel } from "./openai";
-import { OpenAICompatible } from "./openai-compatible";
-import { GeminiModel } from "./gemini";
+import { ModelConfig, SummarizationModel } from "../types/models.js";
+import { AnthropicModel } from "./anthropic.js";
+import { OpenAIModel } from "./openai.js";
+import { OpenAICompatible } from "./openai-compatible.js";
+import { GeminiModel } from "./gemini.js";
 
 export function initializeModel(provider: String, config: ModelConfig): SummarizationModel {
     let model: SummarizationModel;

@@ -15,9 +15,9 @@ const mockSuccessResponse = {
 };
 
 // Import after mocking
-import { AnthropicModel, createAnthropicModel } from '../../models/anthropic';
-import { ModelConfig, SummarizationOptions } from '../../types/models';
-import { constructPrompt } from '../../models/prompts';
+import { AnthropicModel, createAnthropicModel } from '../../models/anthropic.js';
+import { ModelConfig, SummarizationOptions } from '../../types/models.js';
+import { constructPrompt } from '../../models/prompts.js';
 
 describe('AnthropicModel', () => {
   const MOCK_API_KEY = 'dummy-key';

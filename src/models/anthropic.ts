@@ -1,5 +1,5 @@
-import { ModelConfig, SummarizationModel, SummarizationOptions } from '../types/models';
-import { constructPrompt } from './prompts';
+import { ModelConfig, SummarizationModel, SummarizationOptions } from '../types/models.js';
+import { constructPrompt } from './prompts.js';
 
 interface AnthropicResponse {
   content: Array<{

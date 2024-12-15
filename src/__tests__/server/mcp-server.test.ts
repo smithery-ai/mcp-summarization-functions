@@ -1,8 +1,8 @@
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { McpServer } from '../../server/mcp-server';
-import { SummarizationService } from '../../services/summarization';
+import { McpServer } from '../../server/mcp-server.js';
+import { SummarizationService } from '../../services/summarization.js';
 import { ErrorCode, McpError, ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { SummarizationModel } from '../../types/models';
+import { SummarizationModel } from '../../types/models.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import path from 'path';
 

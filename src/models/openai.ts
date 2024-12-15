@@ -1,5 +1,5 @@
-import { OpenAICompatible } from './openai-compatible';
-import { SummarizationModel, ModelConfig } from '../types/models';
+import { OpenAICompatible } from './openai-compatible.js';
+import { SummarizationModel, ModelConfig } from '../types/models.js';
 
 export class OpenAIModel extends OpenAICompatible {
   constructor() {

@@ -3,7 +3,9 @@ import { config } from 'dotenv';
 import { createAnthropicModel } from './models/anthropic.js';
 
 // Load environment variables from .env file if present
-config();
+if (process.env.NODE_ENV !== 'production') {
+  config();
+}
 import { SummarizationService } from './services/summarization.js';
 import { McpServer } from './server/mcp-server.js';
 import { SummarizationConfig } from './types/models.js';

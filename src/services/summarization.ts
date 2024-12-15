@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { SummarizationModel, SummarizationConfig } from '../types/models';
+import { SummarizationModel, SummarizationConfig } from '../types/models.js';
 
 interface CacheEntry {
   content: string;
