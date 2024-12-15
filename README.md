@@ -9,7 +9,7 @@
 [Installation](#installation) •
 [Usage](#usage)
 
-[![npm version](https://badge.fury.io/js/%40modelcontextprotocol%2Fsummarization-functions.svg)](https://www.npmjs.com/package/@modelcontextprotocol/summarization-functions)
+[![npm version](https://badge.fury.io/js/mcp-summarization-functions.svg)](https://www.npmjs.com/package/mcp-summarization-functions)
 
 </div>
 
@@ -22,7 +22,7 @@ A powerful MCP server that provides intelligent summarization capabilities throu
 ## Installation
 
 ```bash
-npm install @modelcontextprotocol/summarization-functions
+npm i mcp-summarization-functions
 ```
 
 ## AI Agent Integration
