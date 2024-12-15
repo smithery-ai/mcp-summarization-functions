@@ -16,7 +16,8 @@ const mockSuccessResponse = {
 
 // Import after mocking
 import { AnthropicModel, createAnthropicModel } from '../../models/anthropic';
-import { ModelConfig } from '../../types/models';
+import { ModelConfig, SummarizationOptions } from '../../types/models';
+import { constructPrompt } from '../../models/prompts';
 
 describe('AnthropicModel', () => {
   const MOCK_API_KEY = 'dummy-key';
@@ -94,7 +95,7 @@ describe('AnthropicModel', () => {
       it('should summarize content successfully', async () => {
         const content = 'Test content';
         const type = 'text';
-        const expectedPrompt = `Summarize the following ${type} in a clear, concise way that would be useful for an AI agent. Focus on the most important information and maintain technical accuracy:
+        const expectedPrompt = `Summarize the following ${type} in a clear, concise way that would be useful for an AI agent. Focus on the most important information and maintain technical accuracy.
 
 ${content}
 
@@ -109,7 +110,7 @@ Summary:`;
             headers: {
               'Content-Type': 'application/json',
               'anthropic-version': '2023-06-01',
-              'Authorization': `Bearer ${MOCK_API_KEY}`
+              'x-api-key': MOCK_API_KEY
             },
             body: JSON.stringify({
               model: 'claude-3-5-sonnet-20241022',
@@ -206,6 +207,26 @@ Summary:`;
         const summary = await model.summarize(content, 'text');
         expect(summary).toBeTruthy();
         expect(typeof summary).toBe('string');
+      }, 10000); // Increase timeout for API call
+
+      it('should summarize with hint and output format using real API', async () => {
+        const content = `
+          function authenticate(user, password) {
+            if (password === 'admin123') {
+              return true;
+            }
+            return false;
+          }
+        `;
+        const options: SummarizationOptions = {
+          hint: 'security_analysis',
+          output_format: 'json'
+        };
+        const summary = await model.summarize(content, 'code', options);
+        expect(summary).toBeTruthy();
+        expect(typeof summary).toBe('string');
+        // Should be valid JSON since we requested JSON format
+        expect(() => JSON.parse(summary)).not.toThrow();
       }, 10000); // Increase timeout for API call
     });
   });

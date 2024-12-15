@@ -56,7 +56,7 @@ export class AnthropicModel implements SummarizationModel {
           headers: {
             'Content-Type': 'application/json',
             'anthropic-version': '2023-06-01',
-            'Authorization': `Bearer ${this.config.apiKey}`
+            'x-api-key': this.config.apiKey
           },
           body: JSON.stringify({
             model: this.config.model,
