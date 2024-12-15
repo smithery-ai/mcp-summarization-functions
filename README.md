@@ -50,21 +50,30 @@ This server helps maintain efficient context usage by:
 When integrating with AI agents, include the following in your agent's instructions:
 
 ```
-CONTEXT MANAGEMENT
+# CONTEXT MANAGEMENT
 
-You have access to summarization functions through the MCP server. To prevent context overflow and maintain reliability:
+You have access to summarization functions through the MCP server. These functions are NOT optional - you MUST use them for ALL potentially large outputs to prevent context overflow:
 
-- ALWAYS use summarization for potentially large outputs:
-		• Reading files or executing commands
-		• Analyzing directories or codebases
-		• Processing API responses or error logs
+MANDATORY SUMMARIZATION:
+- You MUST ALWAYS use summarization functions for:
+    - ANY first time file reading operations (unless you are CERTAIN its small and you are going to edit it)
+    - ALL command execution outputs
+    - EVERY directory analysis
+    - ANY API responses or error logs
+    - ANY output that could be large
 
-- Use specialized features when available:
-		• Hints for focused analysis (security, API surface, etc.)
-		• Appropriate output formats (json, markdown)
-		• Content IDs for accessing full details when needed
+NEVER attempt to process raw output directly - ALWAYS use the appropriate summarization function:
+• For commands: summarize_command
+• For files: summarize_files
+• For directories: summarize_directory
+• For other text: summarize_text
 
-Remember: When in doubt about output length, prefer using summarization to prevent context overflow or wasting tokens.
+ALWAYS utilize available features:
+• Specify hints for focused analysis
+• Choose appropriate output formats
+• Use content IDs to access full details only when absolutely necessary
+
+There is NO NEED to process perfect or complete output. Summarized content is ALWAYS preferred over raw data. When in doubt, use summarization.
 ```
 
 ## Features
