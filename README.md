@@ -76,7 +76,7 @@ ALWAYS utilize available features:
 There is NO NEED to process perfect or complete output. Summarized content is ALWAYS preferred over raw data. When in doubt, use summarization.
 ```
 
-<b>Summarization in action on the Ollama repository</b>
+<b>Summarization in action on the Ollama repository (Gemini 2.0 Flash summarization, Claude 3.5 agent)</b>
 
 ![alt text](in_action.png)
 
