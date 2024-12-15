@@ -5,6 +5,7 @@ export interface ModelConfig {
   apiKey: string;
   maxTokens?: number;
   model?: string;
+  baseUrl?: string | null;
 }
 
 /**

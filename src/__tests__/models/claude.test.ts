@@ -10,18 +10,18 @@ global.fetch = mockFetch;
 // Mock successful response
 const mockSuccessResponse = {
   content: [{ text: 'Mocked summary response', type: 'text' }],
-  model: 'claude-3-sonnet-20240229',
+  model: 'claude-3-5-sonnet-20241022',
   role: 'assistant'
 };
 
 // Import after mocking
-import { ClaudeModel, createClaudeModel } from '../../models/claude';
+import { AnthropicModel, createAnthropicModel } from '../../models/anthropic';
 import { ModelConfig } from '../../types/models';
 
-describe('ClaudeModel', () => {
+describe('AnthropicModel', () => {
   const MOCK_API_KEY = 'dummy-key';
   const REAL_API_KEY = process.env.ANTHROPIC_API_KEY || '';
-  let model: ClaudeModel;
+  let model: AnthropicModel;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -29,7 +29,7 @@ describe('ClaudeModel', () => {
       ok: true,
       json: async () => mockSuccessResponse
     } as Response);
-    model = createClaudeModel() as ClaudeModel;
+    model = createAnthropicModel() as AnthropicModel;
   });
 
   describe('Unit Tests', () => {
@@ -49,7 +49,7 @@ describe('ClaudeModel', () => {
 
       it('should throw error if API key is missing', async () => {
         await expect(model.initialize({} as ModelConfig))
-          .rejects.toThrow('API key is required for Claude model');
+          .rejects.toThrow('API key is required for Anthropic model');
       });
 
       it('should validate model name', async () => {
@@ -109,7 +109,7 @@ Summary:`;
             headers: {
               'Content-Type': 'application/json',
               'anthropic-version': '2023-06-01',
-              'x-api-key': MOCK_API_KEY
+              'Authorization': `Bearer ${MOCK_API_KEY}`
             },
             body: JSON.stringify({
               model: 'claude-3-5-sonnet-20241022',
@@ -127,10 +127,10 @@ Summary:`;
       });
 
       it('should throw error if model is not initialized', async () => {
-        const uninitializedModel = createClaudeModel();
+        const uninitializedModel = createAnthropicModel();
         await expect(
           uninitializedModel.summarize('content', 'text')
-        ).rejects.toThrow('Claude model not initialized');
+        ).rejects.toThrow('Anthropic model not initialized');
       });
 
       it('should handle API errors', async () => {
@@ -144,7 +144,7 @@ Summary:`;
 
         await expect(
           model.summarize('content', 'text')
-        ).rejects.toThrow('Claude summarization failed: API error');
+        ).rejects.toThrow('Anthropic summarization failed: API error');
       });
 
       it('should handle network errors', async () => {
@@ -152,7 +152,7 @@ Summary:`;
 
         await expect(
           model.summarize('content', 'text')
-        ).rejects.toThrow('Claude summarization failed: Network error');
+        ).rejects.toThrow('Anthropic summarization failed: Network error');
       });
 
       it('should handle unexpected response format', async () => {
@@ -163,7 +163,7 @@ Summary:`;
 
         await expect(
           model.summarize('content', 'text')
-        ).rejects.toThrow('Unexpected response format from Claude');
+        ).rejects.toThrow('Unexpected response format from Anthropic');
       });
     });
 
@@ -174,14 +174,14 @@ Summary:`;
 
         await expect(
           model.summarize('content', 'text')
-        ).rejects.toThrow('Claude model not initialized');
+        ).rejects.toThrow('Anthropic model not initialized');
       });
     });
 
     describe('factory function', () => {
       it('should create a new instance', () => {
-        const instance = createClaudeModel();
-        expect(instance).toBeInstanceOf(ClaudeModel);
+        const instance = createAnthropicModel();
+        expect(instance).toBeInstanceOf(AnthropicModel);
       });
     });
   });
@@ -192,7 +192,7 @@ Summary:`;
       beforeEach(async () => {
         // Use node-fetch for integration tests
         global.fetch = nodeFetch as unknown as typeof fetch;
-        model = createClaudeModel() as ClaudeModel;
+        model = createAnthropicModel() as AnthropicModel;
         await model.initialize({ apiKey: REAL_API_KEY });
       });
 

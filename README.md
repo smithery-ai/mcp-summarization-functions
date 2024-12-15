@@ -38,15 +38,78 @@ A powerful MCP server that provides intelligent summarization capabilities throu
 npm install
 ```
 
-## Usage
+## Configuration
+
+The server supports multiple AI providers through environment variables:
+
+### Required Environment Variables
+
+- `PROVIDER`: AI provider to use. Supported values:
+		- `ANTHROPIC` - Claude models from Anthropic
+		- `OPENAI` - GPT models from OpenAI
+		- `OPENAI-COMPATIBLE` - OpenAI-compatible APIs (e.g. Azure)
+		- `GOOGLE` - Gemini models from Google
+- `API_KEY`: API key for the selected provider
+
+### Optional Environment Variables
+
+- `MODEL_ID`: Specific model to use (defaults to provider's standard model)
+- `PROVIDER_BASE_URL`: Custom API endpoint for OpenAI-compatible providers
+- `MAX_TOKENS`: Maximum tokens for model responses (default: 1024)
+- `SUMMARIZATION_CHAR_THRESHOLD`: Character count threshold for when to summarize (default: 512)
+- `SUMMARIZATION_CACHE_MAX_AGE`: Cache duration in milliseconds (default: 3600000 - 1 hour)
+
+### Example Configurations
 
 ```bash
-# Start the server
-npm start
+# Anthropic Configuration
+PROVIDER=ANTHROPIC
+API_KEY=your-anthropic-key
+MODEL_ID=claude-3-5-sonnet-20241022
 
-# Required environment variable
-ANTHROPIC_API_KEY=your-api-key
+# OpenAI Configuration
+PROVIDER=OPENAI
+API_KEY=your-openai-key
+MODEL_ID=gpt-4-turbo-preview
+
+# Azure OpenAI Configuration
+PROVIDER=OPENAI-COMPATIBLE
+API_KEY=your-azure-key
+PROVIDER_BASE_URL=https://your-resource.openai.azure.com
+MODEL_ID=your-deployment-name
+
+# Google Configuration
+PROVIDER=GOOGLE
+API_KEY=your-google-key
+MODEL_ID=gemini-2.0-flash-exp
 ```
+
+
+## Usage
+
+Add the server to your MCP configuration file:
+
+```json
+{
+		"mcpServers": {
+				"summarization": {
+						"command": "node",
+						"args": ["path/to/summarization-functions/build/index.js"],
+						"env": {
+								"PROVIDER": "ANTHROPIC",
+								"API_KEY": "your-api-key",
+								"MODEL_ID": "claude-3-5-sonnet-20241022"
+						}
+				}
+		}
+}
+```
+
+The server will be available to use through MCP tools:
+- `summarize_command`: Execute and summarize command output
+- `summarize_files`: Summarize file contents
+- `summarize_directory`: Get directory structure overview
+- `summarize_text`: Summarize arbitrary text content
 
 ## Architecture
 

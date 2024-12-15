@@ -1,32 +1,28 @@
 # Implementation Roadmap
 
-## Foundation (Week 1-2)
-Priority: High
+## Current State
 
-### Core Infrastructure
-1. Update type definitions and interfaces
-2. Modify MCP server to handle new parameters
-3. Enhance SummarizationService with new parameter support
-4. Add basic validation for new parameters
+- **Anthropic**: Implemented and tested with Claude 3 Sonnet model. Uses new Bearer token authentication.
+- **OpenAI**: Implemented and tested.
 
-### Basic Output Formats
-1. Implement text output formatter (baseline)
-2. Implement JSON output formatter
-3. Implement basic markdown formatter
-4. Add format validation and error handling
+## Future Enhancements
 
-*Note: The above requires moving prompts for different summarisations to its own file and rewriting them to a good format*
+- **Support for Various Models**: Extend the `OpenAICompatible` class to support different models like:
+  - **Grok**: Add support for xAI's Grok model.
+  - **Gemini**: Add support for Google's Gemini model.
 
-### Better model support
+## Tasks
 
-Update the env variables to support specifying:
+- [x] Implement Anthropic model support in `src/models/anthropic.ts`.
+- [ ] Implement Gemini model support in `src/models/gemini.ts`.
+- [ ] Update tests in `src/__tests__/models/` to cover new models.
+- [ ] Update documentation in `docs/spec/enhanced-summarization.md` to reflect new model support.
 
-Provider
-- Anthropic
-- Google Gemini
-- OpenAI
-- OpenAI Compatible
+## Notes
 
-API key
-
-Model
+- Ensure that each model implementation follows the `SummarizationModel` interface.
+- Consider performance implications and API rate limits for each model.
+- Update the `ModelConfig` interface to accommodate model-specific configurations.
+- Authentication methods vary by provider:
+  - Anthropic: Uses Bearer token authentication (`Authorization: Bearer <key>`)
+  - OpenAI: Uses API key header (`Authorization: Bearer <key>`)

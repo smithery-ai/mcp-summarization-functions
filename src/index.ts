@@ -1,33 +1,62 @@
 #!/usr/bin/env node
 import { config } from 'dotenv';
-import { createClaudeModel } from './models/claude.js';
+import { createAnthropicModel } from './models/anthropic.js';
 
 // Load environment variables from .env file if present
 config();
 import { SummarizationService } from './services/summarization.js';
 import { McpServer } from './server/mcp-server.js';
 import { SummarizationConfig } from './types/models.js';
+import { initializeModel } from './models/index.js';
 
 async function main() {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  // Model configuration
+  const provider = process.env.PROVIDER;
+  if (!provider) {
+    throw new Error('PROVIDER environment variable is required');
+  }
+  const apiKey = process.env.API_KEY;
   if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY environment variable is required');
+    throw new Error('API_KEY environment variable is required');
+  }
+  const modelId = process.env.MODEL_ID;
+
+  let baseUrl = null;
+  if (process.env.PROVIDER_BASE_URL) {
+    baseUrl = process.env.PROVIDER_BASE_URL;
   }
 
-  try {
-    // Create and configure the summarization model
-    const model = createClaudeModel();
 
+  // 
+  let maxTokens = 1024;
+  if (process.env.MAX_TOKENS) {
+    maxTokens = parseInt(process.env.MAX_TOKENS) || 1024;
+  }
+  let charThreshold = 512;
+  if (process.env.SUMMARIZATION_CHAR_THRESHOLD) {
+    charThreshold = parseInt(process.env.SUMMARIZATION_CHAR_THRESHOLD) || 512;
+  }
+  let cacheMaxAge = 1000 * 60 * 60;
+  if (process.env.SUMMARIZATION_CACHE_MAX_AGE) {
+    cacheMaxAge = parseInt(process.env.SUMMARIZATION_CACHE_MAX_AGE) || 1000 * 60 * 60;
+  }
+
+
+
+  try {
     // Create the configuration
     const config: SummarizationConfig = {
       model: {
-        apiKey,
-        model: 'claude-3-sonnet-20240229',
-        maxTokens: 1024,
+        apiKey: apiKey,
+        model: modelId,
+        maxTokens: maxTokens,
+        baseUrl: null
       },
-      charThreshold: 512, // Threshold for when to summarize
-      cacheMaxAge: 1000 * 60 * 60, // 1 hour cache lifetime
+      charThreshold: charThreshold, // Threshold for when to summarize
+      cacheMaxAge: cacheMaxAge
     };
+
+    const model = initializeModel(provider, config.model);
 
     // Create and initialize the summarization service
     const summarizationService = new SummarizationService(model, config);
