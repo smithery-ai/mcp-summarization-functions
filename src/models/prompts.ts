@@ -81,7 +81,7 @@ function getFormatInstructions(output_format?: string): string {
 /**
  * Constructs the base summarization instructions
  */
-function getBaseSummarizationInstructions(type: string): string {
+export function getBaseSummarizationInstructions(type: string): string {
   return `Summarize the following ${type} in a clear, concise way that would be useful for an AI agent. Focus on the most important information and maintain technical accuracy. Always keep your summary shorter than 4096 tokens.`;
 }
 

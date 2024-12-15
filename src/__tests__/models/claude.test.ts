@@ -17,7 +17,7 @@ const mockSuccessResponse = {
 // Import after mocking
 import { AnthropicModel, createAnthropicModel } from '../../models/anthropic.js';
 import { ModelConfig, SummarizationOptions } from '../../types/models.js';
-import { constructPrompt } from '../../models/prompts.js';
+import { constructPrompt, getBaseSummarizationInstructions } from '../../models/prompts.js';
 
 describe('AnthropicModel', () => {
   const MOCK_API_KEY = 'dummy-key';
@@ -95,7 +95,7 @@ describe('AnthropicModel', () => {
       it('should summarize content successfully', async () => {
         const content = 'Test content';
         const type = 'text';
-        const expectedPrompt = `Summarize the following ${type} in a clear, concise way that would be useful for an AI agent. Focus on the most important information and maintain technical accuracy.
+        const expectedPrompt = `${getBaseSummarizationInstructions(type)}
 
 ${content}
 
