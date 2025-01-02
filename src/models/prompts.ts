@@ -97,11 +97,15 @@ function constructFullInstructions(type: string, options?: SummarizationOptions)
   const baseInstructions = getBaseSummarizationInstructions(type);
   const hintInstructions = getHintInstructions(options?.hint);
   const formatInstructions = getFormatInstructions(options?.output_format);
+  const finalInstructions = [
+    "Please do not include any commentary, questions or text other than the relevant summary itself."
+  ];
 
   return [
     baseInstructions,
     hintInstructions,
-    formatInstructions
+    formatInstructions,
+    ...finalInstructions
   ].filter(Boolean).join('\n\n');
 }
 
