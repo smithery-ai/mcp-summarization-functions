@@ -60,6 +60,11 @@ function getHintInstructions(hint?: string): string {
     type_definitions: 'Focus on type structures, relationships, and hierarchies.'
   };
 
+  if (!hintInstructions[hint]) {
+    // custom hint instructions
+    return `Agent provided a hint for analysis: ${hint}. Please focus on this area in your summary.`;
+  }
+
   return hintInstructions[hint] || '';
 }
 
@@ -92,11 +97,15 @@ function constructFullInstructions(type: string, options?: SummarizationOptions)
   const baseInstructions = getBaseSummarizationInstructions(type);
   const hintInstructions = getHintInstructions(options?.hint);
   const formatInstructions = getFormatInstructions(options?.output_format);
+  const finalInstructions = [
+    "Please do not include any commentary, questions or text other than the relevant summary itself."
+  ];
 
   return [
     baseInstructions,
     hintInstructions,
-    formatInstructions
+    formatInstructions,
+    ...finalInstructions
   ].filter(Boolean).join('\n\n');
 }
 
