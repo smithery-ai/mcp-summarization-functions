@@ -1,13 +1,19 @@
 import { ModelConfig, SummarizationModel, SummarizationOptions } from '../types/models.js';
 import { constructPrompt } from './prompts.js';
 
-import { Anthropic, APIError } from '@anthropic-ai/sdk';
+import { Anthropic, APIError, ClientOptions } from '@anthropic-ai/sdk';
 import { Message } from '@anthropic-ai/sdk/resources/messages';
 
 export class AnthropicModel implements SummarizationModel {
   private config: ModelConfig | null = null;
   private baseUrl = 'https://api.anthropic.com/v1/messages';
   private anthropic: Anthropic | undefined;
+  clientOptions: ClientOptions;
+
+  constructor(clientOptions: ClientOptions = {}) {
+    this.clientOptions = clientOptions;
+  }
+
 
   async initialize(config: ModelConfig): Promise<void> {
     if (!config.apiKey) {
@@ -31,7 +37,8 @@ export class AnthropicModel implements SummarizationModel {
 
 
     this.anthropic = new Anthropic({
-      apiKey: config.apiKey
+      apiKey: config.apiKey,
+      ...this.clientOptions
     });
 
 
@@ -97,6 +104,6 @@ export class AnthropicModel implements SummarizationModel {
 }
 
 // Factory function to create a new Anthropic model instance
-export function createAnthropicModel(): SummarizationModel {
-  return new AnthropicModel();
+export function createAnthropicModel(options: ClientOptions = {}): SummarizationModel {
+  return new AnthropicModel(options);
 }
