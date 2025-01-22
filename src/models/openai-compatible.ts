@@ -59,7 +59,7 @@ export class OpenAICompatible implements SummarizationModel {
       throw new Error(`API request failed with status ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { choices: Array<{ message: { content: string } }> };
     if (data.choices && data.choices.length > 0) {
       return data.choices[0].message.content;
     } else {
