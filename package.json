@@ -1,6 +1,6 @@
 {
   "name": "mcp-summarization-functions",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Provides summarised output from various actions that could otherwise eat up tokens and cause crashes",
   "type": "module",
   "main": "build/index.js",
