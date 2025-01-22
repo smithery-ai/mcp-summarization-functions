@@ -69,7 +69,7 @@ export class GeminiModel implements SummarizationModel {
       throw new Error(`Failed to fetch summary: ${response.statusText}`);
     }
 
-    const data: GeminiResponse = await response.json();
+    const data: GeminiResponse = await response.json() as GeminiResponse;
     return data.candidates[0].content.parts[0].text;
   }
 

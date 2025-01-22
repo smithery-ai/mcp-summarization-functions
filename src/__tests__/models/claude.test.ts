@@ -1,6 +1,7 @@
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { config } from 'dotenv';
-import nodeFetch from 'node-fetch';
+//import nodeFetch from 'node-fetch';
+import nodeFetch from 'isomorphic-fetch';
 config();
 
 // Mock fetch with proper types
@@ -22,6 +23,9 @@ import { constructPrompt, getBaseSummarizationInstructions, getFinalInstructions
 describe('AnthropicModel', () => {
   const MOCK_API_KEY = 'dummy-key';
   const REAL_API_KEY = process.env.ANTHROPIC_API_KEY || '';
+  if (!REAL_API_KEY) {
+    throw new Error('API key is required for integration tests');
+  }
   let model: AnthropicModel;
 
   beforeEach(() => {

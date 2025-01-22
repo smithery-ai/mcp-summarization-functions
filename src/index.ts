@@ -1,12 +1,15 @@
 #!/usr/bin/env node
-// Set up fetch polyfill before any other imports
-import fetch, { Headers, Request, Response } from 'node-fetch';
+
+// use isomorphic-fetch polyfill:
+
+import fetch from 'isomorphic-fetch';
 if (!globalThis.fetch) {
-  globalThis.fetch = fetch as unknown as typeof globalThis.fetch;
-  globalThis.Headers = Headers as unknown as typeof globalThis.Headers;
-  globalThis.Request = Request as unknown as typeof globalThis.Request;
-  globalThis.Response = Response as unknown as typeof globalThis.Response;
+  globalThis.fetch = fetch;
 }
+if (global && !global.fetch) {
+  global.fetch = fetch;
+}
+
 
 import { config } from 'dotenv';
 import { createAnthropicModel } from './models/anthropic.js';
@@ -19,6 +22,7 @@ import { SummarizationService } from './services/summarization.js';
 import { McpServer } from './server/mcp-server.js';
 import { SummarizationConfig } from './types/models.js';
 import { initializeModel } from './models/index.js';
+
 
 async function main() {
   // Model configuration

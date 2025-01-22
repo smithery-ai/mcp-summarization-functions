@@ -1,16 +1,13 @@
 import { ModelConfig, SummarizationModel, SummarizationOptions } from '../types/models.js';
 import { constructPrompt } from './prompts.js';
 
-interface AnthropicResponse {
-  content: Array<{
-    text: string;
-    type: 'text';
-  }>;
-}
+import { Anthropic, APIError } from '@anthropic-ai/sdk';
+import { Message } from '@anthropic-ai/sdk/resources/messages';
 
 export class AnthropicModel implements SummarizationModel {
   private config: ModelConfig | null = null;
   private baseUrl = 'https://api.anthropic.com/v1/messages';
+  private anthropic: Anthropic | undefined;
 
   async initialize(config: ModelConfig): Promise<void> {
     if (!config.apiKey) {
@@ -30,6 +27,14 @@ export class AnthropicModel implements SummarizationModel {
       throw new Error('Invalid max tokens value');
     }
 
+    process.env.ANTHROPIC_API_KEY = config.apiKey;
+
+
+    this.anthropic = new Anthropic({
+      apiKey: config.apiKey
+    });
+
+
     this.config = {
       model,
       maxTokens,
@@ -41,6 +46,9 @@ export class AnthropicModel implements SummarizationModel {
     if (!this.config) {
       throw new Error('Anthropic model not initialized');
     }
+    if (!this.anthropic) {
+      throw new Error('Anthropic SDK not initialized');
+    }
 
     const result = constructPrompt('anthropic', content, type, options);
     if (result.format !== 'anthropic') {
@@ -49,51 +57,32 @@ export class AnthropicModel implements SummarizationModel {
     const prompt = result.prompt;
 
     try {
-      let response: Response;
+      let data: Message;
       try {
-        response = await fetch(this.baseUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'anthropic-version': '2023-06-01',
-            'x-api-key': this.config.apiKey
-          },
-          body: JSON.stringify({
-            model: this.config.model,
-            max_tokens: this.config.maxTokens,
-            messages: [{
-              role: 'user',
-              content: prompt
-            }]
-          })
+        data = await this.anthropic.messages.create({
+          model: this.config.model!!,
+          max_tokens: this.config.maxTokens!!,
+          messages: [{
+            role: 'user',
+            content: prompt
+          }]
         });
-      } catch (fetchError) {
-        throw new Error(`Network error: ${(fetchError as Error).message}`);
-      }
-
-      if (!response.ok) {
-        let errorMessage: string;
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error?.message || `HTTP error ${response.status}`;
-        } catch {
-          errorMessage = `HTTP error ${response.status}`;
+      } catch (fetchError: any) {
+        if (fetchError instanceof APIError) {
+          const error = fetchError as APIError;
+          throw new Error(`API error: ${error.message}`);
+        } else {
+          throw new Error(`Network error: ${fetchError.message}`);
         }
-        throw new Error(errorMessage);
       }
 
-      let data: AnthropicResponse;
-      try {
-        data = await response.json();
-      } catch (parseError) {
-        throw new Error(`Invalid JSON response: ${(parseError as Error).message}`);
-      }
+      const msg = data.content[0] as { text: string, type: string };
 
-      if (!Array.isArray(data.content) || !data.content[0]?.text) {
+      if (!Array.isArray(data.content) || !msg.text || msg.type !== 'text') {
         throw new Error('Unexpected response format from Anthropic API');
       }
 
-      return data.content[0].text;
+      return msg.text;
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`Anthropic summarization failed: ${error.message}`);
