@@ -10,6 +10,7 @@
   "scripts": {
     "preinstall": "node -e \"if (process.versions.node < '22.0.0') { console.error('Requires Node.js 22 or higher. Current version: ' + process.versions.node); process.exit(1); }\"",
     "build": "tsc",
+    "postbuild": "node -e \"if (process.platform !== 'win32') { require('fs').chmodSync('build/index.js', '755'); }\"",
     "start": "node build/index.js",
     "watch": "tsc -w",
     "test": "NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest",

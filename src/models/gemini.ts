@@ -20,7 +20,7 @@ export class GeminiModel implements SummarizationModel {
       throw new Error('API key is required for Gemini model');
     }
 
-    const model = config.model || 'gemini-pro';
+    const model = config.model || 'gemini-1.5-flash';
     const maxTokens = config.maxTokens !== undefined ? config.maxTokens : 1024;
 
     // Validate model name

@@ -17,7 +17,7 @@ export class AnthropicModel implements SummarizationModel {
       throw new Error('API key is required for Anthropic model');
     }
 
-    const model = config.model || 'claude-3-5-sonnet-20241022';
+    const model = config.model || 'claude-3-5-haiku-20241022';
     const maxTokens = config.maxTokens !== undefined ? config.maxTokens : 1024;
 
     // Validate model name
