@@ -24,7 +24,7 @@ describe('AnthropicModel', () => {
   const MOCK_API_KEY = 'dummy-key';
   const REAL_API_KEY = process.env.ANTHROPIC_API_KEY || '';
   if (!REAL_API_KEY) {
-    throw new Error('API key is required for integration tests');
+    console.warn('Skipping integration tests. Set ANTHROPIC_API_KEY to run integration tests');
   }
   let model: AnthropicModel;
 
