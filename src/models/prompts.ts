@@ -60,6 +60,11 @@ function getHintInstructions(hint?: string): string {
     type_definitions: 'Focus on type structures, relationships, and hierarchies.'
   };
 
+  if (!hintInstructions[hint]) {
+    // custom hint instructions
+    return `Agent provided a hint for analysis: ${hint}. Please focus on this area in your summary.`;
+  }
+
   return hintInstructions[hint] || '';
 }
 
@@ -85,6 +90,10 @@ export function getBaseSummarizationInstructions(type: string): string {
   return `Summarize the following ${type} in a clear, concise way that would be useful for an AI agent. Focus on the most important information and maintain technical accuracy. Always keep your summary shorter than 4096 tokens.`;
 }
 
+export function getFinalInstructions(): string[] {
+  return ["Please do not include any commentary, questions or text other than the relevant summary itself."];
+}
+
 /**
  * Combines all instructions into a complete prompt
  */
@@ -92,11 +101,13 @@ function constructFullInstructions(type: string, options?: SummarizationOptions)
   const baseInstructions = getBaseSummarizationInstructions(type);
   const hintInstructions = getHintInstructions(options?.hint);
   const formatInstructions = getFormatInstructions(options?.output_format);
+  const finalInstructions = getFinalInstructions();
 
   return [
     baseInstructions,
     hintInstructions,
-    formatInstructions
+    formatInstructions,
+    ...finalInstructions
   ].filter(Boolean).join('\n\n');
 }
 

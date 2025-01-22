@@ -1,4 +1,16 @@
 #!/usr/bin/env node
+
+// use isomorphic-fetch polyfill:
+
+import fetch from 'isomorphic-fetch';
+if (!globalThis.fetch) {
+  globalThis.fetch = fetch;
+}
+if (global && !global.fetch) {
+  global.fetch = fetch;
+}
+
+
 import { config } from 'dotenv';
 import { createAnthropicModel } from './models/anthropic.js';
 
@@ -10,6 +22,7 @@ import { SummarizationService } from './services/summarization.js';
 import { McpServer } from './server/mcp-server.js';
 import { SummarizationConfig } from './types/models.js';
 import { initializeModel } from './models/index.js';
+
 
 async function main() {
   // Model configuration

@@ -20,7 +20,7 @@ export class GeminiModel implements SummarizationModel {
       throw new Error('API key is required for Gemini model');
     }
 
-    const model = config.model || 'gemini-pro';
+    const model = config.model || 'gemini-1.5-flash';
     const maxTokens = config.maxTokens !== undefined ? config.maxTokens : 1024;
 
     // Validate model name
@@ -69,7 +69,7 @@ export class GeminiModel implements SummarizationModel {
       throw new Error(`Failed to fetch summary: ${response.statusText}`);
     }
 
-    const data: GeminiResponse = await response.json();
+    const data: GeminiResponse = await response.json() as GeminiResponse;
     return data.candidates[0].content.parts[0].text;
   }
 
