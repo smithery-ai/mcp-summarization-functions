@@ -4,13 +4,16 @@
   "description": "Provides summarised output from various actions that could otherwise eat up tokens and cause crashes",
   "type": "module",
   "main": "build/index.js",
+  "bin": {
+    "mcp-summarization-functions": "build/index.js"
+  },
   "engines": {
     "node": ">=22.0.0"
   },
   "scripts": {
     "preinstall": "node -e \"if (process.versions.node < '22.0.0') { console.error('Requires Node.js 22 or higher. Current version: ' + process.versions.node); process.exit(1); }\"",
     "build": "tsc",
-    "postbuild": "node -e \"if (process.platform !== 'win32') { require('fs').chmodSync('build/index.js', '755'); }\"",
+    "postbuild": "node -e \"if (process.platform !== 'win32') { const fs = require('fs'); const path = require('path'); function chmodRecursive(dir) { fs.readdirSync(dir, { withFileTypes: true }).forEach(dirent => { const fullPath = path.join(dir, dirent.name); if (dirent.isDirectory()) { chmodRecursive(fullPath); } else if (dirent.name.endsWith('.js')) { console.log('Setting chmod 755 on:', fullPath); fs.chmodSync(fullPath, '755'); } }); } chmodRecursive('build'); }\"",
     "start": "node build/index.js",
     "watch": "tsc -w",
     "test": "NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest",
