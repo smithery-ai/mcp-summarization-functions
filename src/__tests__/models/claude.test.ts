@@ -17,7 +17,7 @@ const mockSuccessResponse = {
 // Import after mocking
 import { AnthropicModel, createAnthropicModel } from '../../models/anthropic.js';
 import { ModelConfig, SummarizationOptions } from '../../types/models.js';
-import { constructPrompt, getBaseSummarizationInstructions } from '../../models/prompts.js';
+import { constructPrompt, getBaseSummarizationInstructions, getFinalInstructions } from '../../models/prompts.js';
 
 describe('AnthropicModel', () => {
   const MOCK_API_KEY = 'dummy-key';
@@ -95,11 +95,12 @@ describe('AnthropicModel', () => {
       it('should summarize content successfully', async () => {
         const content = 'Test content';
         const type = 'text';
-        const expectedPrompt = `${getBaseSummarizationInstructions(type)}
-
-${content}
-
-Summary:`;
+        const expectedPrompt = [
+          getBaseSummarizationInstructions(type),
+          ...getFinalInstructions(),
+          content,
+          'Summary:'
+        ].join('\n\n');
 
         const summary = await model.summarize(content, type);
 
@@ -113,7 +114,7 @@ Summary:`;
               'x-api-key': MOCK_API_KEY
             },
             body: JSON.stringify({
-              model: 'claude-3-5-sonnet-20241022',
+              model: 'claude-3-5-haiku-20241022',
               max_tokens: 1024,
               messages: [
                 {

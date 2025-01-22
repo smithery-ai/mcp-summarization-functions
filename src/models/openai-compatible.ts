@@ -10,7 +10,7 @@ export class OpenAICompatible implements SummarizationModel {
       throw new Error('API key is required for OpenAI compatible models');
     }
 
-    const model = config.model;
+    const model = config.model || 'gpt-4o-mini';
     const maxTokens = config.maxTokens !== undefined ? config.maxTokens : 1024;
 
     // Validate model name
