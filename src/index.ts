@@ -1,4 +1,13 @@
 #!/usr/bin/env node
+// Set up fetch polyfill before any other imports
+import fetch, { Headers, Request, Response } from 'node-fetch';
+if (!globalThis.fetch) {
+  globalThis.fetch = fetch as unknown as typeof globalThis.fetch;
+  globalThis.Headers = Headers as unknown as typeof globalThis.Headers;
+  globalThis.Request = Request as unknown as typeof globalThis.Request;
+  globalThis.Response = Response as unknown as typeof globalThis.Response;
+}
+
 import { config } from 'dotenv';
 import { createAnthropicModel } from './models/anthropic.js';
 
